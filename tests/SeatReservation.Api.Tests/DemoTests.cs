@@ -56,6 +56,43 @@ public class DemoTests
     }
 
     [Fact]
+    public async Task Demo_girisi_dakikalik_siniri_asinca_429_doner()
+    {
+        await using var factory = new ApiFactory();
+        using var client = factory.WithWebHostBuilder(b => b.ConfigureServices(s =>
+            s.Configure<SeatReservation.Application.Demo.DemoOptions>(o =>
+            {
+                o.Enabled = true;
+                o.MaxSessionsPerMinute = 3;
+            }))).CreateClient();
+
+        var statuses = new List<HttpStatusCode>();
+        for (var i = 0; i < 5; i++)
+            statuses.Add((await client.PostAsync("/api/auth/demo", null)).StatusCode);
+
+        Assert.Equal(3, statuses.Count(s => s == HttpStatusCode.Created));
+        Assert.Equal(2, statuses.Count(s => s == HttpStatusCode.TooManyRequests));
+    }
+
+    [Fact]
+    public async Task Demo_siniri_diger_uclari_etkilemez()
+    {
+        await using var factory = new ApiFactory();
+        using var client = factory.WithWebHostBuilder(b => b.ConfigureServices(s =>
+            s.Configure<SeatReservation.Application.Demo.DemoOptions>(o =>
+            {
+                o.Enabled = true;
+                o.MaxSessionsPerMinute = 1;
+            }))).CreateClient();
+        await client.PostAsync("/api/auth/demo", null);
+        await client.PostAsync("/api/auth/demo", null); // sınır doldu
+
+        var events = await client.GetAsync("/api/events");
+
+        Assert.Equal(HttpStatusCode.OK, events.StatusCode);
+    }
+
+    [Fact]
     public async Task Misafir_hesabina_parolayla_girilemez()
     {
         await using var factory = new ApiFactory();
