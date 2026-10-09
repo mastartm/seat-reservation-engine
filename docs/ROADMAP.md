@@ -26,7 +26,7 @@ Temel soru: **iki kişi aynı koltuğu aynı anda almaya çalışırsa ne olur?*
 - [x] Yük/eş zamanlılık testi sonuçları README'de (tablo) — _gerçek SQL Server'da 10–300 paralel kullanıcı, tur başına tam 1 kazanan; betik: `scripts/concurrency_load_test.py`_
 - [x] Mimari diyagramı (Mermaid sıra diyagramı, README)
 - [x] Canlı demo dayanıklılığı: kullanıcı başına koltuk sınırı (409) ve demo modunda misafir satın almalarının 30 dk sonra otomatik serbest kalması
-- [ ] Demo GIF'i — _proje sahibi çekecek (canlı demo veya `docker compose` ekranı)_
+- [x] Demo GIF'i — _canlı sitede çekildi (`docs/demo.gif`, README'de)_
 - [x] README'de "Neden böyle tasarlandı?" bölümü
 - [x] Kod temizliği: arayüz lint uyarıları giderildi; eş zamanlı kayıt 500 → 409; demo ucuna hız sınırı (429)
 - [x] CI'da SQL Server'a karşı koşan test işi — _`sqlserver` işi: eş zamanlılık testleri SQL Server 2022'ye karşı; yerelde SQL Server konteynerinde doğrulandı, GitHub'da henüz koşmadı_
