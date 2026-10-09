@@ -72,4 +72,25 @@ describe('AuthForm', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Sunucuya ulaşılamadı')
   })
+
+  it('"Demo ile dene" parolasız demo ucunu çağırır ve oturum açar', async () => {
+    const fetchMock = mockFetch(201, { ...session, email: 'misafir-abc@demo.local' })
+    const { onDone, user } = setup()
+
+    await user.click(screen.getByRole('button', { name: 'Demo ile dene (kayıtsız)' }))
+
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/auth/demo')
+    expect(fetchMock.mock.calls[0][1].method).toBe('POST')
+    expect(onDone).toHaveBeenCalledOnce()
+  })
+
+  it('sunucuda demo kapalıysa (404) sunucunun mesajını gösterir', async () => {
+    mockFetch(404, { detail: 'Demo girişi bu sunucuda kapalı.' })
+    const { onDone, user } = setup()
+
+    await user.click(screen.getByRole('button', { name: 'Demo ile dene (kayıtsız)' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Demo girişi bu sunucuda kapalı.')
+    expect(onDone).not.toHaveBeenCalled()
+  })
 })

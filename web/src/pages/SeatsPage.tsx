@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { ApiError, api } from '../api/client'
 import type { EventSummary, ReservationView, SeatView } from '../api/types'
+import { DemoLoginButton } from '../components/DemoLoginButton'
 import { HoldPanel } from '../components/HoldPanel'
 import { SeatLegend, SeatMap } from '../components/SeatMap'
 import { formatDateTime } from '../lib/format'
@@ -108,7 +109,12 @@ export function SeatsPage({ events, mine, holds, loggedIn, onLoginRequired, onRe
         {seats.data && (
           <div className="space-y-5">
             <SeatMap seats={seats.data} mine={mine} onSelect={hold} busySeatId={busySeatId} />
-            {!loggedIn && <p className="text-center text-xs text-slate-500">Koltuk tutmak için giriş yapman gerekir.</p>}
+            {!loggedIn && (
+              <div className="mx-auto max-w-xs space-y-2 text-center">
+                <p className="text-xs text-slate-500">Koltuk tutmak için giriş yapman gerekir.</p>
+                <DemoLoginButton />
+              </div>
+            )}
             <SeatLegend />
             {seats.error && (
               <p role="status" className="text-center text-xs text-amber-700">

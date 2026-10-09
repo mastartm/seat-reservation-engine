@@ -8,6 +8,8 @@ interface AuthState {
   session: AuthResult | null
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string) => Promise<void>
+  /** Tek tıkla misafir hesabı (sunucuda Demo modu açıksa). */
+  demoLogin: () => Promise<void>
   logout: () => void
 }
 
@@ -61,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       login: async (email, password) => apply(await api.login(email, password)),
       register: async (email, password) => apply(await api.register(email, password)),
+      demoLogin: async () => apply(await api.demoLogin()),
       logout,
     }),
     [session, apply, logout],

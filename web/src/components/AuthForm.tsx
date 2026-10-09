@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
+import { DemoLoginButton } from './DemoLoginButton'
 
 type Mode = 'login' | 'register'
 
@@ -73,6 +74,13 @@ export function AuthForm({ onDone }: { onDone: () => void }) {
       >
         {submitting ? 'Bekleyin…' : isLogin ? 'Giriş yap' : 'Kayıt ol'}
       </button>
+
+      <div className="flex items-center gap-3 text-xs text-slate-400" aria-hidden="true">
+        <span className="h-px flex-1 bg-slate-200" />
+        veya
+        <span className="h-px flex-1 bg-slate-200" />
+      </div>
+      <DemoLoginButton onDone={onDone} />
 
       <p className="text-center text-sm text-slate-600">
         {isLogin ? 'Hesabın yok mu?' : 'Zaten hesabın var mı?'}{' '}

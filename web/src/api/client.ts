@@ -69,6 +69,7 @@ export const api = {
     request<AuthResult>('POST', '/api/auth/register', { email, password }),
   login: (email: string, password: string) =>
     request<AuthResult>('POST', '/api/auth/login', { email, password }),
+  demoLogin: () => request<AuthResult>('POST', '/api/auth/demo'),
   listEvents: () => request<EventSummary[]>('GET', '/api/events'),
   listSeats: (eventId: string) => request<SeatView[]>('GET', `/api/events/${eventId}/seats`),
   holdSeat: (seatId: string) => request<ReservationView>('POST', `/api/seats/${seatId}/hold`),

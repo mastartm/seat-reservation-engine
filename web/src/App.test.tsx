@@ -85,4 +85,19 @@ describe('koltuk tutma ve onaylama akışı', () => {
     expect(within(list).getByText('Satın alındı')).toBeInTheDocument()
     expect(within(list).getByText(/B1/)).toBeInTheDocument()
   })
+
+  it('giriş yapmamış ziyaretçi haritadaki demo düğmesiyle tek tıkta girer ve hemen koltuk tutabilir', async () => {
+    installFakeApi()
+    render(<App />)
+    const user = userEvent.setup()
+
+    await screen.findByRole('button', { name: 'A1, boş' })
+    await user.click(screen.getByRole('button', { name: 'Demo ile dene (kayıtsız)' }))
+
+    const header = await screen.findByRole('banner')
+    expect(await within(header).findByText('misafir-test@demo.local')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'A1, boş' }))
+    expect(await screen.findByRole('timer', { name: 'A1 için kalan süre' })).toBeInTheDocument()
+  })
 })

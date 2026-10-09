@@ -26,6 +26,7 @@ export function installFakeApi(options: { holdMs?: number; failHoldWith?: { stat
 
   const handler = async (url: string, init: RequestInit = {}) => {
     const method = init.method ?? 'GET'
+    if (url === '/api/auth/demo' && method === 'POST') return json(201, { ...SESSION, email: 'misafir-test@demo.local' })
     if (url === '/api/events') return json(200, [EVENT])
     if (url === `/api/events/${EVENT.id}/seats`) return json(200, seats)
     if (url === '/api/reservations/mine') return json(200, [...reservations].reverse())
