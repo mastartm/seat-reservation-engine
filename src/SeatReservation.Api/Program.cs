@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -84,6 +85,21 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
     });
 builder.Services.AddAuthorization();
 
+// Demo girişi herkese açık hesap üretir; dakikalık genel sınır (aşılınca 429) veritabanının doldurulmasını yavaşlatır.
+// Sınır, JWT/CORS ayarları gibi tembel okunur: DemoOptions yapılandırma tam hazır olduğunda çözülür.
+builder.Services.AddRateLimiter(_ => { }); // gerçek ayar aşağıda, tembel (DemoOptions hazır olunca)
+builder.Services.AddOptions<RateLimiterOptions>()
+    .Configure<IOptions<SeatReservation.Application.Demo.DemoOptions>>((limiter, demo) =>
+    {
+        limiter.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        limiter.AddFixedWindowLimiter(Program.DemoRateLimitPolicy, o =>
+        {
+            o.PermitLimit = demo.Value.MaxSessionsPerMinute;
+            o.Window = TimeSpan.FromMinutes(1);
+            o.QueueLimit = 0; // bekletme yok: sınır aşıldıysa hemen reddet
+        });
+    });
+
 var app = builder.Build();
 
 app.UseExceptionHandler();
@@ -95,6 +111,7 @@ app.UseSwaggerUI();
 
 // HTTPS yönlendirmesi yok: TLS'i API'nin önündeki proxy/ingress sonlandırır, konteyner yalnızca HTTP dinler.
 app.UseCors();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -105,4 +122,7 @@ await DatabaseInitializer.InitializeAsync(app.Services);
 app.Run();
 
 // WebApplicationFactory<Program> için gerekli.
-public partial class Program;
+public partial class Program
+{
+    public const string DemoRateLimitPolicy = "demo";
+}

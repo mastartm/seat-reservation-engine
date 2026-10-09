@@ -10,6 +10,16 @@ public sealed class RequestValidationException(string message) : AppException(me
 
 public sealed class EmailAlreadyRegisteredException(string message) : AppException(message);
 
+/// <summary>
+/// Veritabanı benzersizlik kuralı (unique index) ihlal edildi. Altyapı katmanı, sağlayıcıya özgü hatayı
+/// (SQL Server / SQLite) bu tipe çevirir; servisler "hangi alan?" sorusunu kendi dillerinde cevaplar.
+/// </summary>
+public sealed class UniqueConstraintViolationException(string message, Exception? inner = null)
+    : AppException(message)
+{
+    public Exception? Inner { get; } = inner;
+}
+
 /// <summary>E-posta/parola eşleşmedi. Hangisinin yanlış olduğu bilerek söylenmez. → 401</summary>
 public sealed class InvalidCredentialsException() : AppException("E-posta veya parola hatalı.");
 

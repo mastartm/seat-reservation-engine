@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { ApiError } from '../api/client'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../auth/authState'
 import { DemoLoginButton } from './DemoLoginButton'
 
 type Mode = 'login' | 'register'

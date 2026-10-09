@@ -31,6 +31,8 @@ export function usePolled<T>(load: () => Promise<T>, intervalMs: number, enabled
 
   useEffect(() => {
     if (!enabled) return
+    // Efekt harici bir sistemle (sunucu) eşitler: setState yanıt gelince, await'ten sonra çağrılır; eşzamanlı döngü yoktur.
+    // oxlint-disable-next-line react/set-state-in-effect
     void reload()
     const timer = setInterval(() => {
       if (!document.hidden) void reload()

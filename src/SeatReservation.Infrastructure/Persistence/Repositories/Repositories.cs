@@ -71,5 +71,22 @@ internal sealed class EfUnitOfWork(AppDbContext db) : IUnitOfWork
         {
             throw new ConcurrencyConflictException("Kayıt başka bir istek tarafından değiştirildi.", ex);
         }
+        // DbUpdateConcurrencyException da DbUpdateException'dan türer; sıra bilerek böyle (önce özel olan).
+        catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+        {
+            throw new UniqueConstraintViolationException("Benzersiz olması gereken bir değer zaten kayıtlı.", ex);
+        }
     }
+
+    /// <summary>
+    /// SQL Server: hata numarası 2601 (benzersiz index) / 2627 (UNIQUE kısıtı). Numara kullanılır, mesaj metni değil:
+    /// SQL Server mesajları sunucu diline göre değişir. SQLite (yalnızca testlerde) sürücüsü bu projede referanslı
+    /// olmadığı için tip adı ve "UNIQUE" metniyle tanınır.
+    /// </summary>
+    private static bool IsUniqueViolation(DbUpdateException ex) => ex.InnerException switch
+    {
+        Microsoft.Data.SqlClient.SqlException sql => sql.Number is 2601 or 2627,
+        { } inner => inner.GetType().Name == "SqliteException" && inner.Message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase),
+        _ => false,
+    };
 }

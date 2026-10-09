@@ -30,7 +30,16 @@ public sealed class AuthService(
             throw new EmailAlreadyRegisteredException("Bu e-posta zaten kayıtlı.");
 
         await users.AddAsync(user, ct);
-        await uow.SaveChangesAsync(ct);
+        try
+        {
+            await uow.SaveChangesAsync(ct);
+        }
+        // Yukarıdaki "var mı?" kontrolü ile kayıt arasında aynı e-postayla gelen ikinci istek geçebilir (yarış).
+        // Son söz veritabanındaki unique index'tir; ihlal 500 değil, normal "zaten kayıtlı" cevabıdır (409).
+        catch (UniqueConstraintViolationException)
+        {
+            throw new EmailAlreadyRegisteredException("Bu e-posta zaten kayıtlı.");
+        }
         return ToResult(user);
     }
 

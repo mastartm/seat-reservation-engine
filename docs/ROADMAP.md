@@ -23,10 +23,12 @@ Temel soru: **iki kişi aynı koltuğu aynı anda almaya çalışırsa ne olur?*
 - [ ] Canlı deploy (ücretsiz katman) ve README'ye link — _hazırlık tamam (`docs/DEPLOY.md`, `web/Dockerfile`, CORS); hesap/anahtar adımları proje sahibinde_
 
 ## Aşama 3 — Cila
-- [ ] Yük/eş zamanlılık testi sonuçları README'de (tablo)
-- [ ] Mimari diyagramı, demo GIF'i
-- [ ] README'de "Neden bu tasarım?" bölümü
-- [ ] Kod temizliği, eksik testlerin tamamlanması
+- [x] Yük/eş zamanlılık testi sonuçları README'de (tablo) — _gerçek SQL Server'da 10–300 paralel kullanıcı, tur başına tam 1 kazanan; betik: `scripts/concurrency_load_test.py`_
+- [x] Mimari diyagramı (Mermaid sıra diyagramı, README)
+- [ ] Demo GIF'i — _proje sahibi çekecek (canlı demo veya `docker compose` ekranı)_
+- [x] README'de "Neden böyle tasarlandı?" bölümü
+- [x] Kod temizliği: arayüz lint uyarıları giderildi; eş zamanlı kayıt 500 → 409; demo ucuna hız sınırı (429)
+- [ ] CI'da SQL Server'a karşı koşan test işi (şimdilik testler SQLite'ta)
 
 ## Bilinçli olarak yapılmayanlar
 Ödeme entegrasyonu, e-posta, mikroservis. Kapsam dışı, README'de "sonraki adımlar" olarak anılır.

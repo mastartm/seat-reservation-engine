@@ -20,7 +20,7 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
             NotHoldOwnerException => (StatusCodes.Status403Forbidden, "Yetkisiz"),
             NotFoundException => (StatusCodes.Status404NotFound, "Bulunamadı"),
             SeatNotAvailableException or HoldExpiredException or InvalidStateTransitionException
-                or EmailAlreadyRegisteredException or ConcurrencyConflictException
+                or EmailAlreadyRegisteredException or ConcurrencyConflictException or UniqueConstraintViolationException
                 => (StatusCodes.Status409Conflict, "Çakışma"),
             _ => (StatusCodes.Status500InternalServerError, "Beklenmeyen hata"),
         };

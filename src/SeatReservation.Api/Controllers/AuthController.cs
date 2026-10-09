@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using SeatReservation.Api.Infrastructure;
 using SeatReservation.Api.Contracts;
 using SeatReservation.Application.Auth;
@@ -26,7 +27,9 @@ public class AuthController(AuthService auth) : ControllerBase
 
     /// <summary>Demo modunda (Demo__Enabled=true) tek kullanımlık misafir hesabı açar ve giriş yaptırır; kapalıysa 404.</summary>
     [HttpPost("demo")]
+    [EnableRateLimiting(Program.DemoRateLimitPolicy)]
     [ProducesResponseType<AuthResult>(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> Demo(CancellationToken ct) =>
         StatusCode(StatusCodes.Status201Created, await auth.CreateDemoSessionAsync(ct));
 

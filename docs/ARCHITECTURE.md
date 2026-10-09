@@ -157,6 +157,7 @@ eksikse `${VAR:?}` ile açıklayıcı hatayla durur.
 | `Database__MigrateOnStartup` | `true` ise açılışta migration (compose'ta açık) |
 | `Admin__Email`, `Admin__Password` | Verilirse ilk Admin kullanıcıyı oluşturur |
 | `Demo__Enabled` | `true` ise açılışta (etkinlik yoksa) örnek veri tohumlanır ve `POST /api/auth/demo` açılır (§11.8) |
+| `Demo__MaxSessionsPerMinute` | Demo girişinin dakikalık genel sınırı (varsayılan `30`; aşılınca 429) |
 | `Cors__AllowedOrigins` | Arayüzün adresi (virgülle ayrılmış). Boşsa CORS kapalı (§11.7) |
 | `Reservation__HoldDuration` | Tutma süresi (varsayılan `00:10:00`) |
 | `Reservation__ExpirySweepInterval` | Süre dolum taraması sıklığı (varsayılan `00:00:30`) |
@@ -167,8 +168,6 @@ için yalnızca Development'ta açılırdı. HTTPS yönlendirmesi yok: TLS'i API
 ## 10. Bilinen sınırlar (Aşama 3 adayları)
 
 * Testler SQLite üzerinde; SQL Server konteynerine karşı koşan CI işi yok.
-* Aynı e-postayla **tam aynı anda** iki kayıt isteği benzersiz indeksi ihlal eder ve 500 döner (kontrol-sonra-yaz
-  yarışı); 409'a çevrilmesi gerek.
 * Hold sayısı kullanıcı başına sınırlı değil (bir kullanıcı tüm koltukları tutabilir).
 * Refresh token, parola sıfırlama, e-posta doğrulama yok (kapsam dışı).
 * `docker compose up --build` bu geliştirme ortamında uçtan uca çalıştırılamadı: sandbox'ın ağı, imaj derlemesi
@@ -176,8 +175,20 @@ için yalnızca Development'ta açılırdı. HTTPS yönlendirmesi yok: TLS'i API
   gerçek SQL Server 2022 konteyneri + API (migration, demo tohumu, hold/onay), gerçek `nginx:1.27` + `web/nginx.conf`
   (index, `/api` ve `/health` yönlendirmesi, önbellek başlıkları) ve Chromium ile tarayıcı akışı (§11.9).
 * Arayüz için SQL Server'a karşı koşan otomatik uçtan uca (E2E) test CI'da yok; yalnızca elle çalıştırıldı (§11.9).
-* Demo uçu (`POST /api/auth/demo`) hız sınırsızdır; biri döngüyle çağırırsa veritabanı misafir kullanıcıyla dolar (§11.8).
 * Kullanıcı tutmasından vazgeçemez (iptal/serbest bırakma ucu yok); koltuk süre dolunca kendiliğinden boşalır.
+* Demo hız sınırı **genel**dir (tüm istemciler toplamı), istemci başına değil: proxy arkasında gerçek IP'ye güvenmek
+  `ForwardedHeaders` ve güvenilen proxy yapılandırması gerektirir; bu vitrin için gereksiz karmaşıklık sayıldı.
+
+### Aşama 3'te giderilenler
+
+* **Eş zamanlı aynı e-posta kaydı:** "var mı?" kontrolü ile kayıt arasında ikinci istek geçebiliyordu (kontrol-sonra-yaz
+  yarışı) ve benzersiz indeks ihlali 500 olarak dönüyordu. Artık `EfUnitOfWork` ihlali tanır (SQL Server hata numarası
+  2601/2627, mesaj metni değil: metin sunucu diline göre değişir) ve `UniqueConstraintViolationException`'a çevirir;
+  `AuthService` bunu "zaten kayıtlı" (409) yapar. Son söz veritabanındaki unique index'tedir; uygulama kodu yarışı
+  kazanmaya çalışmaz. Test: `Register_same_email_in_parallel_...` (20 paralel istek → tam 1 adet 201, 19 adet 409). Düzeltme
+  kaldırılınca test başarısız olur (denendi: 19 çakışma beklenirken 9).
+* **Demo ucu hız sınırı:** `Demo__MaxSessionsPerMinute` (varsayılan 30) dakikalık sabit pencere; aşılınca 429. Yalnızca
+  `POST /api/auth/demo`'yu etkiler.
 
 ## 11. Arayüz (`web/`)
 
@@ -248,7 +259,8 @@ Ziyaretçi 2 dakikada deneyebilsin diye (`Demo__Enabled=true`):
 * **Tek tıkla giriş = tek kullanımlık misafir hesabı** (`POST /api/auth/demo`), sabit "demo/demo" kullanıcısı değil. Sabit kimlik
   repoda herkesin bildiği bir parola olurdu (CLAUDE.md: parola commit'lenmez) ve ziyaretçiler birbirinin rezervasyonlarını görürdü.
   Misafirin parola özeti kimsenin bilmediği rastgele bir değerdir: bu hesaba parolayla girilemez, yalnızca yanıttaki token çalışır.
-* **Bilinen risk:** hız sınırı yok; kötüye kullanım veritabanını şişirir. Demo için kabul edildi, `DEPLOY.md`'de uyarıldı.
+* **Kötüye kullanım:** demo ucu dakikada en çok `Demo__MaxSessionsPerMinute` (varsayılan 30) misafir açar, aşılınca 429. Bu
+  genel bir sınırdır, istemci başına değil (§10); yine de veritabanı yavaşça dolabilir, `DEPLOY.md`'de uyarıldı.
 
 ### 11.9 Test stratejisi (frontend)
 * **Bileşen/akış testleri (35, CI'da):** `SeatMap` (durumlar, sıralama, tıklanabilirlik), `AuthForm` (başarı/hata/ağ hatası/demo),
