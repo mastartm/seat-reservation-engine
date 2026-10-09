@@ -36,5 +36,13 @@ services:
     ports:
       - "8080:8080"
 
+  # Arayüz: Vite çıktısını nginx sunar ve /api'yi API'ye iletir → http://localhost:3000
+  web:
+    build: ./web
+    depends_on:
+      - api
+    ports:
+      - "3000:80"
+
 volumes:
   sqldata:
