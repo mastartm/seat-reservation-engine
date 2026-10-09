@@ -20,7 +20,7 @@ Temel soru: **iki kişi aynı koltuğu aynı anda almaya çalışırsa ne olur?*
 - [x] Koltuk haritası, anlık durum güncellemesi (polling, 3 sn) — _hold/onay + 10 dk geri sayım dahil_
 - [x] Giriş ekranı, "Rezervasyonlarım"
 - [x] Demo için örnek veri (seed) ve tek tıkla demo girişi — _`Demo__Enabled=true`; gerçek SQL Server'da doğrulandı_
-- [ ] Canlı deploy (ücretsiz katman) ve README'ye link — _hazırlık tamam (`docs/DEPLOY.md`, `web/Dockerfile`, CORS); hesap/anahtar adımları proje sahibinde_
+- [x] Canlı deploy (ücretsiz katman) ve README'ye link — _Vercel (arayüz) + Render (API, Docker) + Azure SQL (ücretsiz teklif); 2026-10-10'da yayınlandı, demo girişi canlıda doğrulandı_
 
 ## Aşama 3 — Cila
 - [x] Yük/eş zamanlılık testi sonuçları README'de (tablo) — _gerçek SQL Server'da 10–300 paralel kullanıcı, tur başına tam 1 kazanan; betik: `scripts/concurrency_load_test.py`_
