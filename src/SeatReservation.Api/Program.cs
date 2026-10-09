@@ -14,7 +14,25 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers().AddJsonOptions(o =>
     o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = "Seat Reservation API", Version = "v1" });
+    // Swagger'daki "Authorize" düğmesi: /api/auth/login'den alınan token'ı yapıştırınca korumalı uçlar denenebilir.
+    c.AddSecurityDefinition("Bearer", new()
+    {
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        Description = "Giriş yanıtındaki token'ı yapıştır (\"Bearer\" öneki gerekmez).",
+    });
+    c.AddSecurityRequirement(new()
+    {
+        {
+            new() { Reference = new() { Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme, Id = "Bearer" } },
+            Array.Empty<string>()
+        },
+    });
+});
 
 // Zaman her yerde TimeProvider üzerinden okunur; testler sahte saat enjekte edip süre dolumunu bekletmeden sınar.
 builder.Services.AddSingleton(TimeProvider.System);
@@ -52,11 +70,10 @@ var app = builder.Build();
 
 app.UseExceptionHandler();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Swagger her ortamda açık: bu proje bir vitrin, `docker compose up` (Production ortamı) sonrası
+// ilk bakılacak yer burası. Gerçek bir ürün olsaydı yalnızca Development'ta açardık.
+app.UseSwagger();
+app.UseSwaggerUI();
 
 // HTTPS yönlendirmesi yok: TLS'i API'nin önündeki proxy/ingress sonlandırır, konteyner yalnızca HTTP dinler.
 app.UseAuthentication();
