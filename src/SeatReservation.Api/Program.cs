@@ -39,6 +39,8 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddApplication();
 builder.Services.Configure<SeatReservation.Application.Reservations.ReservationOptions>(
     builder.Configuration.GetSection(SeatReservation.Application.Reservations.ReservationOptions.SectionName));
+builder.Services.Configure<SeatReservation.Application.Demo.DemoOptions>(
+    builder.Configuration.GetSection(SeatReservation.Application.Demo.DemoOptions.SectionName));
 builder.Services.AddInfrastructure();
 
 builder.Services.AddHostedService<SeatReservation.Api.BackgroundServices.HoldExpirationWorker>();

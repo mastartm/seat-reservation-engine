@@ -1,5 +1,7 @@
 using SeatReservation.Application.Abstractions;
+using Microsoft.Extensions.Options;
 using SeatReservation.Application.Common;
+using SeatReservation.Application.Demo;
 using SeatReservation.Domain.Entities;
 using SeatReservation.Domain.Enums;
 
@@ -12,6 +14,7 @@ public sealed class AuthService(
     IUnitOfWork uow,
     IPasswordHasher hasher,
     ITokenService tokens,
+    IOptions<DemoOptions> demo,
     TimeProvider time)
 {
     public const int MinPasswordLength = 8;
@@ -39,6 +42,22 @@ public sealed class AuthService(
         var ok = hasher.Verify(password ?? string.Empty, user?.PasswordHash ?? hasher.DummyHash);
         if (user is null || !ok) throw new InvalidCredentialsException();
 
+        return ToResult(user);
+    }
+
+    /// <summary>
+    /// Tek tıkla demo girişi: her çağrıda yeni, tek kullanımlık misafir hesabı (rol: User) açar.
+    /// Sabit bir "demo" kullanıcısı/parolası olsaydı repoda herkesin bildiği bir kimlik bilgisi olurdu ve
+    /// ziyaretçiler birbirinin rezervasyonlarını görürdü. Parola özeti, kimsenin bilmediği rastgele bir
+    /// değerin özetidir (<see cref="IPasswordHasher.DummyHash"/>): bu hesaba parolayla girilemez, yalnızca bu yanıttaki token çalışır.
+    /// </summary>
+    public async Task<AuthResult> CreateDemoSessionAsync(CancellationToken ct)
+    {
+        if (!demo.Value.Enabled) throw new NotFoundException("Demo girişi bu sunucuda kapalı.");
+
+        var user = User.Create($"misafir-{Guid.NewGuid().ToString("N")[..12]}@demo.local", hasher.DummyHash, UserRole.User, time.GetUtcNow());
+        await users.AddAsync(user, ct);
+        await uow.SaveChangesAsync(ct);
         return ToResult(user);
     }
 
