@@ -1,11 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from './api/client'
-import type { EventSummary, ReservationView } from './api/types'
+import type { EventSummary } from './api/types'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { AuthForm } from './components/AuthForm'
+import { activeReservationsBySeat } from './lib/seatState'
+import { usePolled } from './lib/usePolled'
 import { SeatsPage } from './pages/SeatsPage'
 
 type View = 'seats' | 'auth'
+
+const MINE_POLL_MS = 5000
 
 function Shell() {
   const { session, logout } = useAuth()
@@ -20,8 +24,16 @@ function Shell() {
       .catch((e: Error) => setEventsError(e.message))
   }, [])
 
-  // Aşama 2 / özellik 2'de rezervasyonlar sunucudan çekilecek; şimdilik koltuk haritası salt okunur.
-  const mine = useMemo(() => new Map<string, ReservationView>(), [])
+  // Rezervasyonlarım: koltuk haritasındaki "senin" renkleri ve geri sayım kartları buradan beslenir.
+  // userId bağımlılığı bilinçli: kullanıcı değişince `load` değişir ve usePolled önceki kullanıcının verisini atar.
+  const userId = session?.userId
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
+  const loadMine = useCallback(() => api.myReservations(), [userId])
+  const reservations = usePolled(loadMine, MINE_POLL_MS, session !== null)
+  const reservationList = useMemo(() => reservations.data ?? [], [reservations.data])
+  const mine = useMemo(() => activeReservationsBySeat(reservationList), [reservationList])
+  const holds = useMemo(() => reservationList.filter((r) => r.status === 'Held'), [reservationList])
+  const reloadMine = reservations.reload
 
   return (
     <div className="mx-auto min-h-screen max-w-4xl px-4 pb-16">
@@ -61,7 +73,14 @@ function Shell() {
             <AuthForm onDone={() => setView('seats')} />
           </div>
         ) : (
-          <SeatsPage events={events} mine={mine} />
+          <SeatsPage
+            events={events}
+            mine={mine}
+            holds={holds}
+            loggedIn={session !== null}
+            onLoginRequired={() => setView('auth')}
+            onReservationsChanged={reloadMine}
+          />
         )}
       </main>
     </div>
