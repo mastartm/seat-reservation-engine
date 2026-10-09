@@ -61,6 +61,17 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         return (user, scope.ServiceProvider.GetRequiredService<ITokenService>().Create(user).Value);
     }
 
+    /// <summary>Etkinlik ve koltuklarını doğrudan veritabanına yazar; koltuk kimliklerini etiket sırasıyla döner.</summary>
+    public async Task<IReadOnlyList<Guid>> CreateEventAsync(int rows = 1, int seatsPerRow = 1)
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var ev = Event.Create("Test etkinliği", Time.GetUtcNow().AddDays(30), rows, seatsPerRow);
+        db.Events.Add(ev);
+        await db.SaveChangesAsync();
+        return ev.Seats.Select(s => s.Id).ToList();
+    }
+
     public HttpClient CreateClientWithToken(string token)
     {
         var client = CreateClient();

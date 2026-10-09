@@ -19,6 +19,8 @@ builder.Services.AddSwaggerGen();
 // Zaman her yerde TimeProvider üzerinden okunur; testler sahte saat enjekte edip süre dolumunu bekletmeden sınar.
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddApplication();
+builder.Services.Configure<SeatReservation.Application.Reservations.ReservationOptions>(
+    builder.Configuration.GetSection(SeatReservation.Application.Reservations.ReservationOptions.SectionName));
 builder.Services.AddInfrastructure();
 
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
