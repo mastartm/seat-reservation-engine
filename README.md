@@ -1,11 +1,66 @@
 # seat-reservation-engine
 
+[![CI](https://github.com/mastartm/seat-reservation-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/mastartm/seat-reservation-engine/actions/workflows/ci.yml)
+
 Eş zamanlılık odaklı koltuk/randevu rezervasyon motoru. Temel soru: **iki kişi aynı koltuğu aynı anda almaya çalışırsa ne olur?**
 
-> Cevap: tam biri başarılı olur, diğeri `409 Conflict` alır. 100 paralel istekle test edilir
-> ([`ConcurrencyTests`](tests/SeatReservation.Api.Tests/ConcurrencyTests.cs)); mekanizma `docs/ARCHITECTURE.md` §3'te.
+> Cevap: tam biri başarılı olur, diğeri `409 Conflict` alır. Gerçek SQL Server üzerinde 300 paralel istekle de böyle
+> ([sonuçlar aşağıda](#eş-zamanlılık-sonuçları)); otomatik testi: [`ConcurrencyTests`](tests/SeatReservation.Api.Tests/ConcurrencyTests.cs),
+> mekanizma: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §3.
 
-> Durum: **Aşama 1 (backend) tamam; Aşama 2 (arayüz) kodu tamam, canlı deploy bekliyor** ([`docs/DEPLOY.md`](docs/DEPLOY.md)). Yol haritası: [`docs/ROADMAP.md`](docs/ROADMAP.md).
+> Durum: backend ve arayüz tamam, yerelde `docker compose up` ile çalışır. Canlı demo yayını bekliyor
+> ([`docs/DEPLOY.md`](docs/DEPLOY.md)). Yol haritası: [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+## Eş zamanlılık sonuçları
+
+Tek bir koltuğa N kullanıcı **aynı anda** istek atar (her satır 3 tur). Beklenen: tur başına tam 1 adet `201 Created`,
+kalanı `409 Conflict`, başka hiçbir cevap yok.
+
+| Eş zamanlı kullanıcı | Tur | 201 (kazanan) | 409 (çakışma) | Beklenmeyen (5xx vb.) | Gecikme p50 | p95 |
+|---:|---:|---:|---:|---:|---:|---:|
+| 10 | 3 | 3 | 27 | 0 | 17 ms | 101 ms |
+| 50 | 3 | 3 | 147 | 0 | 30 ms | 37 ms |
+| 100 | 3 | 3 | 297 | 0 | 48 ms | 96 ms |
+| 200 | 3 | 3 | 597 | 0 | 99 ms | 207 ms |
+| 300 | 3 | 3 | 897 | 0 | 254 ms | 344 ms |
+
+Çoklu koltuk senaryosu: 200 kullanıcı, 20 koltuktan rastgele birini seçer → seçilen 20 farklı koltuğun **her biri için tam 1 kazanan**
+(20 adet 201, 180 adet 409, beklenmeyen 0).
+
+Ölçüm koşulu (dürüst not): SQL Server 2022 konteyneri, API ve istemci betiği **aynı makinede**
+(Docker Desktop, Windows). Gecikmeler üretim ağını yansıtmaz, göreli okunmalıdır; doğruluk sonucu (tam 1 kazanan) ise
+makineden bağımsızdır. Yeniden üretmek için: `docker compose up -d --build` sonra `python -X utf8 scripts/concurrency_load_test.py`
+([betik](scripts/concurrency_load_test.py)). Otomatik testler (SQLite, CI'da her push'ta) ayrıca 100 paralel istekle 5 tur koşar.
+
+## Neden böyle tasarlandı?
+
+```mermaid
+sequenceDiagram
+    participant A as Kullanıcı A
+    participant B as Kullanıcı B
+    participant API as API (ASP.NET Core)
+    participant DB as SQL Server
+    A->>API: POST /seats/42/hold
+    B->>API: POST /seats/42/hold
+    API->>DB: Koltuk 42'yi oku (RowVersion = v1)
+    API->>DB: Koltuk 42'yi oku (RowVersion = v1)
+    API->>DB: UPDATE ... WHERE Id = 42 AND RowVersion = v1  (A)
+    DB-->>API: 1 satır etkilendi → RowVersion = v2
+    API-->>A: 201 Created (koltuk senin)
+    API->>DB: UPDATE ... WHERE Id = 42 AND RowVersion = v1  (B)
+    DB-->>API: 0 satır etkilendi (v1 artık yok)
+    API-->>B: 409 Conflict (başkası tutuyor)
+```
+
+* **Kilit yerine iyimser eş zamanlılık (`RowVersion`):** İki istek de koltuğu "boş" okur; yarışı veritabanı tek bir `UPDATE ... WHERE RowVersion = ...` ile
+  çözer. Uygulama kodu yarışı kazanmaya çalışmaz ve satırları kilitleyip bekletmez, kaybeden hemen `409` alır.
+* **İş kuralları domain'de:** koltuk durum makinesi (Boş → Tutuldu → Satıldı) `Seat` entity'sinin içinde; controller'da iş mantığı yok. Kural
+  `Domain.Tests` ile veritabanı olmadan sınanır.
+* **Süre dolumu sunucuda:** tutmalar 10 dakika sürer, bir `BackgroundService` süresi dolanları serbest bırakır. Arayüzün geri sayımı yalnızca
+  göstergedir; sunucu saatiyle düzeltilir, süreyi uygulayan taraf sunucudur.
+* **Her cevap bilinen bir cevap:** benzersiz index ihlali (aynı e-postayla eş zamanlı kayıt) bile 500 değil 409'dur; veritabanı hata numarası
+  (2601/2627) çevrilir.
+* Tüm kararlar, reddedilen alternatifler ve bilinen sınırlar: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Teknoloji
 .NET 8, ASP.NET Core Web API, EF Core, SQL Server, JWT, xUnit, Docker, GitHub Actions. Arayüz: React 19, TypeScript, Vite, Tailwind CSS, Vitest.
@@ -57,4 +112,5 @@ dotnet build
 dotnet test
 cd web && npm ci && npm test        # arayüz bileşen testleri (lint: npm run lint, derleme: npm run build)
 ```
-Testler Docker gerektirmez (entegrasyon testleri SQLite dosyası kullanır; sınırı `ARCHITECTURE.md` §3'te).
+Testler Docker gerektirmez (entegrasyon testleri SQLite dosyası kullanır; sınırı `ARCHITECTURE.md` §3'te). Şu an: 25 domain + 56 entegrasyon + 35 arayüz testi.
+Gerçek SQL Server'a karşı eş zamanlılık ölçümü ayrıca [`scripts/concurrency_load_test.py`](scripts/concurrency_load_test.py) ile yapılır (sonuçlar yukarıda).
