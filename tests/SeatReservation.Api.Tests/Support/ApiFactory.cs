@@ -87,11 +87,11 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     }
 
     /// <summary>Doğrudan veritabanına kullanıcı ekler (parola hash'lemeden, hızlı) ve ona ait token döner.</summary>
-    public async Task<(User User, string Token)> CreateUserAsync(UserRole role = UserRole.User)
+    public async Task<(User User, string Token)> CreateUserAsync(UserRole role = UserRole.User, string? email = null)
     {
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var user = User.Create($"{Guid.NewGuid():N}@test.local", "not-a-real-hash", role, Time.GetUtcNow());
+        var user = User.Create(email ?? $"{Guid.NewGuid():N}@test.local", "not-a-real-hash", role, Time.GetUtcNow());
         db.Users.Add(user);
         await db.SaveChangesAsync();
         return (user, scope.ServiceProvider.GetRequiredService<ITokenService>().Create(user).Value);

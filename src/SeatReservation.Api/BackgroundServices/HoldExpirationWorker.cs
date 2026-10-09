@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using SeatReservation.Application.Common;
+using SeatReservation.Application.Demo;
 using SeatReservation.Application.Reservations;
 
 namespace SeatReservation.Api.BackgroundServices;
@@ -38,6 +39,11 @@ public sealed class HoldExpirationWorker(
             }
             // Parti dolduysa geride kalan olabilir; hemen devam et.
             while (released == HoldExpirationService.BatchSize && !ct.IsCancellationRequested);
+
+            // Demo modunda misafirlerin onayladığı koltukları belirli süre sonra boşalt (demo kapalıysa hiçbir şey yapmaz).
+            await using var demoScope = scopes.CreateAsyncScope();
+            var revoked = await demoScope.ServiceProvider.GetRequiredService<DemoCleanupService>().ReleaseGuestSalesAsync(ct);
+            if (revoked > 0) logger.LogInformation("Demo: {Count} misafir satın alması serbest bırakıldı.", revoked);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

@@ -201,6 +201,8 @@ eksikse `${VAR:?}` ile açıklayıcı hatayla durur.
 | `Demo__MaxSessionsPerMinute` | Demo girişinin dakikalık genel sınırı (varsayılan `30`; aşılınca 429) |
 | `Cors__AllowedOrigins` | Arayüzün adresi (virgülle ayrılmış). Boşsa CORS kapalı (§11.7) |
 | `Reservation__HoldDuration` | Tutma süresi (varsayılan `00:10:00`) |
+| `Reservation__MaxActiveReservationsPerUser` | Kullanıcı başına aktif koltuk sınırı: süresi dolmamış tutma + onaylı satın alma (varsayılan `6`, `0` = sınırsız; aşılınca 409) |
+| `Demo__GuestSaleLifetime` | Demo modunda misafirlerin onayladığı koltuğun serbest kalma süresi (varsayılan `00:30:00`; `0` = kapalı) |
 | `Reservation__ExpirySweepInterval` | Süre dolum taraması sıklığı (varsayılan `00:00:30`) |
 
 Swagger her ortamda açıktır (vitrin projesi; `docker compose up` Production ortamında çalışır). Gerçek bir ürün
@@ -209,7 +211,8 @@ için yalnızca Development'ta açılırdı. HTTPS yönlendirmesi yok: TLS'i API
 ## 10. Bilinen sınırlar (Aşama 3 adayları)
 
 * Eş zamanlılık dışındaki testler (ve yerel `dotnet test`) SQLite üzerinde; SQL Server'a karşı yalnızca eş zamanlılık alt kümesi CI'da koşar (§3).
-* Hold sayısı kullanıcı başına sınırlı değil (bir kullanıcı tüm koltukları tutabilir).
+* Koltuk sınırı kontrol-sonra-yaz çalışır: aynı kullanıcının paralel istekleri sınırı birkaç koltuk aşabilir. Koltukların kendisi
+  yine tam bir kişiye gider (RowVersion); sınır bir kötüye kullanım freni, doğruluk kuralı değil.
 * Refresh token, parola sıfırlama, e-posta doğrulama yok (kapsam dışı).
 * `docker compose up --build` bu geliştirme ortamında uçtan uca çalıştırılamadı: sandbox'ın ağı, imaj derlemesi
   sırasında konteynerin NuGet'e erişmesine izin vermedi. Bunun yerine parçalar ayrı ayrı gerçek bileşenlerle doğrulandı:
@@ -229,6 +232,15 @@ için yalnızca Development'ta açılırdı. HTTPS yönlendirmesi yok: TLS'i API
   kaldırılınca test başarısız olur (denendi: 19 çakışma beklenirken 9).
 * **Demo ucu hız sınırı:** `Demo__MaxSessionsPerMinute` (varsayılan 30) dakikalık sabit pencere; aşılınca 429. Yalnızca
   `POST /api/auth/demo`'yu etkiler.
+* **Kullanıcı başına koltuk sınırı:** `Reservation__MaxActiveReservationsPerUser` (varsayılan 6). Sayılan: süresi dolmamış tutmalar
+  + onaylı satın almalar (dolmuş tutma ve iptal sayılmaz). Aşılınca `409` ve arayüzde okunur mesaj. Tek kişi tüm salonu tutamaz.
+* **Demo kendini toparlar:** Canlıda her ziyaretçi birkaç koltuk alıp çıkınca harita zamanla tamamen "Satıldı" olurdu.
+  `DemoCleanupService`, demo modunda **misafirlerin** onayladığı koltukları `Demo__GuestSaleLifetime` (varsayılan 30 dk) sonra
+  serbest bırakır (`Reservation.RevokeSale`: `Confirmed → Cancelled`, kullanıcı bunu çağıramaz). Süre dolum servisiyle aynı arka plan
+  döngüsünde çalışır. Korunanlar: tohum veri (`tohum@demo.local`) ve gerçek kullanıcıların satın almaları. Misafir, e-postasından
+  tanınır (`misafir-` öneki + `@demo.local`); tohum sahibi aynı alan adını kullandığı için yalnızca alan adına bakmak onu da siler
+  (test: `Seed_owner_is_kept_...`, önek kontrolü bozulunca başarısız olur). Herkese açık kayıt `@demo.local` alan adını alamaz.
+  İzleme alanı olarak yeni sütun/migration yerine e-posta adlandırması seçildi: şema değişmedi.
 
 ## 11. Arayüz (`web/`)
 

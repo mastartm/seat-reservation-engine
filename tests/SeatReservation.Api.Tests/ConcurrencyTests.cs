@@ -152,6 +152,9 @@ public sealed class ConcurrencyTests : IDisposable
     {
         // Aynı rezervasyonda iptal ↔ onay yarışı. Tek atışlık şansı elemek için 15 koltuk/tur.
         const int rounds = 15;
+        // Bu test yarışı sınar, kullanıcı başına koltuk sınırını değil (tek kullanıcı 15 koltuk tutuyor): sınır kapalı.
+        factory.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<SeatReservation.Application.Reservations.ReservationOptions>>()
+            .Value.MaxActiveReservationsPerUser = 0;
         var seatIds = await factory.CreateEventAsync(rows: 1, seatsPerRow: rounds);
         var (_, token) = await factory.CreateUserAsync();
         var client = factory.CreateClientWithToken(token);

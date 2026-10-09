@@ -13,6 +13,7 @@ public static class DependencyInjection
         services.AddScoped<EventService>();
         services.AddScoped<ReservationService>();
         services.AddScoped<HoldExpirationService>();
+        services.AddScoped<Demo.DemoCleanupService>();
         services.AddOptions<ReservationOptions>();
         services.AddOptions<Demo.DemoOptions>();
         return services;

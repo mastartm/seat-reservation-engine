@@ -31,6 +31,12 @@ public interface IReservationRepository
     Task<Reservation?> GetWithSeatAsync(Guid reservationId, CancellationToken ct);
     Task<IReadOnlyList<Reservation>> ListByUserAsync(Guid userId, CancellationToken ct);
     Task<IReadOnlyList<Reservation>> ListExpiredHoldsAsync(DateTimeOffset now, int take, CancellationToken ct);
+
+    /// <summary>Kullanıcının aktif koltuk sayısı: süresi dolmamış tutmalar + onaylı satın almalar.</summary>
+    Task<int> CountActiveByUserAsync(Guid userId, DateTimeOffset now, CancellationToken ct);
+
+    /// <summary>Misafir hesapların <paramref name="confirmedBefore"/> öncesinde onaylanmış satın almaları (koltuğuyla).</summary>
+    Task<IReadOnlyList<Reservation>> ListConfirmedGuestSalesAsync(DateTimeOffset confirmedBefore, int take, CancellationToken ct);
 }
 
 public interface IUnitOfWork

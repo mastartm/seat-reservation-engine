@@ -20,6 +20,9 @@ public sealed class UniqueConstraintViolationException(string message, Exception
     public Exception? Inner { get; } = inner;
 }
 
+/// <summary>Kullanıcı başına aktif koltuk sınırı aşıldı. → 409</summary>
+public sealed class ReservationLimitExceededException(string message) : AppException(message);
+
 /// <summary>E-posta/parola eşleşmedi. Hangisinin yanlış olduğu bilerek söylenmez. → 401</summary>
 public sealed class InvalidCredentialsException() : AppException("E-posta veya parola hatalı.");
 

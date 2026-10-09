@@ -40,7 +40,13 @@ public sealed class ReservationService(
     {
         var seat = await seats.GetAsync(seatId, ct) ?? throw new NotFoundException("Koltuk bulunamadı.");
 
-        var reservation = seat.Hold(userId, time.GetUtcNow(), options.Value.HoldDuration);
+        var now = time.GetUtcNow();
+        var max = options.Value.MaxActiveReservationsPerUser;
+        if (max > 0 && await reservations.CountActiveByUserAsync(userId, now, ct) >= max)
+            throw new ReservationLimitExceededException(
+                $"Aynı anda en fazla {max} koltuğun olabilir (tutma + satın alma). Önce birinden vazgeç.");
+
+        var reservation = seat.Hold(userId, now, options.Value.HoldDuration);
         await reservations.AddAsync(reservation, ct);
         await uow.SaveChangesAsync(ct);
 

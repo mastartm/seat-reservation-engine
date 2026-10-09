@@ -21,6 +21,7 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
             NotFoundException => (StatusCodes.Status404NotFound, "Bulunamadı"),
             SeatNotAvailableException or HoldExpiredException or InvalidStateTransitionException
                 or EmailAlreadyRegisteredException or ConcurrencyConflictException or UniqueConstraintViolationException
+                or ReservationLimitExceededException
                 => (StatusCodes.Status409Conflict, "Çakışma"),
             _ => (StatusCodes.Status500InternalServerError, "Beklenmeyen hata"),
         };
