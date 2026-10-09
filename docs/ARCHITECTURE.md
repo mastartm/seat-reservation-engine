@@ -231,7 +231,7 @@ JWT ve kullanıcı bilgisi `localStorage`'da tutulur; sunucu 401 dönerse (token
 401 "parola yanlış" demektir ve oturumu kapatmaz.
 * **Güvenlik takası:** `localStorage` XSS ile okunabilir; `HttpOnly` çerez bunu önlerdi ama CSRF koruması, çerez/CORS ayarı ve
   (Render/Vercel gibi) farklı alan adlarında `SameSite` sorunları getirir. Bu projede kullanıcı girdisi React tarafından
-  kaçışlanır (`dangerouslySetInnerHTML` yok) ve token'ın ömrü kısa; yine de bu bilinçli bir takastır (bkz. `INTERVIEW.md`).
+  kaçışlanır (`dangerouslySetInnerHTML` yok) ve token ömrü 60 dk; yine de bu bilinçli bir takastır (bkz. `INTERVIEW.md`).
 * `localStorage` erişimi (gizli pencere vb.) hata verirse oturum yalnızca bellekte yaşar; uygulama çalışmaya devam eder.
 
 ### 11.7 Geliştirme ve canlıda API adresi

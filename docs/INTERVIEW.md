@@ -132,7 +132,7 @@ kaybeden 409'un mesajını görür ve harita yenilenir. İki aşama zaten var: *
 
 **A5. JWT'yi neden `localStorage`'da tutuyorsun? XSS riski yok mu?**
 Var; bilinçli bir takas. `HttpOnly` çerez XSS'e karşı daha iyi ama CSRF koruması ve farklı alan adlarında (arayüz Vercel, API
-Render) `SameSite`/CORS karmaşıklığı getirir. Burada React çıktıyı kaçışlıyor, `dangerouslySetInnerHTML` yok, token ömrü kısa.
+Render) `SameSite`/CORS karmaşıklığı getirir. Burada React çıktıyı kaçışlıyor, `dangerouslySetInnerHTML` yok, token ömrü 60 dk.
 Gerçek bir üründe BFF + `HttpOnly` çerezi ya da kısa ömürlü access + refresh token düşünürdüm. (§11.6)
 
 **A6. Demo girişi için neden sabit bir demo kullanıcısı yapmadın?**
