@@ -43,6 +43,22 @@ builder.Services.AddInfrastructure();
 
 builder.Services.AddHostedService<SeatReservation.Api.BackgroundServices.HoldExpirationWorker>();
 
+// CORS yalnızca Cors__AllowedOrigins (virgülle ayrılmış) doluysa açılır; boşsa tarayıcı başka origin'den çağıramaz.
+// Yerel geliştirmede Vite proxy'si aynı origin gibi davrandığı için gerekmez; canlıda arayüz ayrı alan adındadır.
+// Kimlik bilgisi çerezle değil Authorization başlığıyla taşındığı için AllowCredentials bilerek yok.
+// Tembel okunur (JWT ayarıyla aynı sebep: test ayarları eager okumada görünmez).
+builder.Services.AddCors();
+builder.Services.AddOptions<Microsoft.AspNetCore.Cors.Infrastructure.CorsOptions>()
+    .Configure<IConfiguration>((cors, config) =>
+    {
+        var origins = (config["Cors:AllowedOrigins"] ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (origins.Length == 0) return;
+        // Date açıkça açılır: arayüzün geri sayımı sunucu saatine göre düzeltmesi için başlığı okuyabilmesi gerekir
+        // (tarayıcı varsayılan olarak çapraz origin yanıtlarda yalnızca "güvenli" başlıkları gösterir, Date bunlardan değil).
+        cors.AddDefaultPolicy(p => p.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod().WithExposedHeaders("Date"));
+    });
+
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddProblemDetails();
 
@@ -76,6 +92,7 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 // HTTPS yönlendirmesi yok: TLS'i API'nin önündeki proxy/ingress sonlandırır, konteyner yalnızca HTTP dinler.
+app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
