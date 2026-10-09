@@ -29,12 +29,13 @@ export function SeatMap({ seats, mine, onSelect, busySeatId = null }: Props) {
   return (
     <div className="overflow-x-auto pb-2">
       <div
-        className="mx-auto mb-6 w-3/4 min-w-64 rounded-b-full bg-slate-800 py-1 text-center text-xs font-medium tracking-widest text-slate-200"
+        className="mx-auto mb-6 w-3/4 min-w-56 max-w-xl rounded-b-full bg-slate-800 py-1 text-center text-xs font-medium tracking-widest text-slate-200"
         aria-hidden="true"
       >
         SAHNE
       </div>
-      <div className="flex flex-col items-center gap-1.5" role="group" aria-label="Koltuk haritası">
+      {/* w-max + mx-auto: dar ekranda harita ortalanmak yerine soldan başlayıp kaydırılır (items-center soldaki koltukları keserdi). */}
+      <div className="mx-auto flex w-max flex-col gap-1.5" role="group" aria-label="Koltuk haritası">
         {orderedRows.map(([row, rowSeats]) => (
           <div key={row} className="flex items-center gap-1.5">
             <span className="w-5 text-center text-xs font-semibold text-slate-500" aria-hidden="true">
