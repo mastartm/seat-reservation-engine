@@ -59,6 +59,12 @@ export function SeatsPage({ events, mine, holds, loggedIn, onLoginRequired, onRe
     onReservationsChanged()
   }
 
+  function cancelled(reservation: ReservationView) {
+    setNotice({ kind: 'success', text: `${reservation.seatLabel} için vazgeçtin, koltuk herkese açık.` })
+    void seats.reload()
+    onReservationsChanged()
+  }
+
   const selectedEvent = useMemo(() => events.find((e) => e.id === selectedId), [events, selectedId])
 
   if (events.length === 0) {
@@ -97,7 +103,7 @@ export function SeatsPage({ events, mine, holds, loggedIn, onLoginRequired, onRe
         </p>
       )}
 
-      {loggedIn && <HoldPanel holds={holds} onChanged={() => { void seats.reload(); onReservationsChanged() }} onConfirmed={confirmed} />}
+      {loggedIn && <HoldPanel holds={holds} onChanged={() => { void seats.reload(); onReservationsChanged() }} onConfirmed={confirmed} onCancelled={cancelled} />}
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
         {seats.error && !seats.data && (

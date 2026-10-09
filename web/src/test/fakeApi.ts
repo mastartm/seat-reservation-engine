@@ -12,7 +12,7 @@ export const SESSION: AuthResult = {
 }
 
 /**
- * Sunucuyu taklit eden, durumlu bir fetch sahtesi: hold/confirm gerçekten koltuk ve rezervasyon durumunu değiştirir.
+ * Sunucuyu taklit eden, durumlu bir fetch sahtesi: hold/confirm/cancel gerçekten koltuk ve rezervasyon durumunu değiştirir.
  * Böylece testler tek tek istekleri değil, kullanıcının gördüğü akışı doğrular.
  */
 export function installFakeApi(options: { holdMs?: number; failHoldWith?: { status: number; detail: string } } = {}) {
@@ -51,6 +51,15 @@ export function installFakeApi(options: { holdMs?: number; failHoldWith?: { stat
       reservation.status = 'Confirmed'
       reservation.confirmedAt = new Date().toISOString()
       seats.find((s) => s.id === reservation.seatId)!.status = 'Sold'
+      return json(200, reservation)
+    }
+    const cancel = /^\/api\/reservations\/(.+)\/cancel$/.exec(url)
+    if (cancel && method === 'POST') {
+      const reservation = reservations.find((r) => r.id === cancel[1])!
+      // Sunucudaki kuralın aynısı: satın alınmış rezervasyon iptal edilemez (409).
+      if (reservation.status === 'Confirmed') return json(409, { detail: 'Onaylanmış rezervasyon iptal edilemez.' })
+      reservation.status = 'Cancelled'
+      seats.find((s) => s.id === reservation.seatId)!.status = 'Available'
       return json(200, reservation)
     }
     return json(404, { detail: `fakeApi: ${method} ${url} tanımsız` })

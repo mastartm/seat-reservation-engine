@@ -86,6 +86,43 @@ describe('koltuk tutma ve onaylama akışı', () => {
     expect(within(list).getByText(/B1/)).toBeInTheDocument()
   })
 
+  it('tutulan koltuktan "Vazgeç" ile vazgeçilir: sayaç kalkar, koltuk boşalır ve yeniden tutulabilir', async () => {
+    signIn()
+    const { seats } = installFakeApi()
+    render(<App />)
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: 'A1, boş' }))
+    await screen.findByRole('timer', { name: 'A1 için kalan süre' })
+
+    await user.click(screen.getByRole('button', { name: 'A1 için vazgeç' }))
+
+    expect(await screen.findByRole('button', { name: 'A1, boş' })).toBeInTheDocument()
+    expect(screen.queryByRole('timer')).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('A1 için vazgeçtin')
+    expect(seats.find((s) => s.label === 'A1')!.status).toBe('Available')
+
+    await user.click(screen.getByRole('button', { name: 'A1, boş' }))
+    expect(await screen.findByRole('timer', { name: 'A1 için kalan süre' })).toBeInTheDocument()
+  })
+
+  it('Rezervasyonlarım ekranında vazgeçilen kayıt "Vazgeçildi" rozetiyle görünür', async () => {
+    signIn()
+    installFakeApi()
+    render(<App />)
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: 'A2, boş' }))
+    await user.click(await screen.findByRole('button', { name: 'A2 için vazgeç' }))
+    await screen.findByRole('button', { name: 'A2, boş' })
+
+    await user.click(screen.getByRole('button', { name: /Rezervasyonlarım/ }))
+
+    const list = await screen.findByRole('list')
+    expect(within(list).getByText('Vazgeçildi')).toBeInTheDocument()
+    expect(within(list).queryByRole('button', { name: /vazgeç/i })).not.toBeInTheDocument()
+  })
+
   it('giriş yapmamış ziyaretçi haritadaki demo düğmesiyle tek tıkta girer ve hemen koltuk tutabilir', async () => {
     installFakeApi()
     render(<App />)

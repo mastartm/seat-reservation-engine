@@ -1,6 +1,6 @@
 // Sunucu sözleşmesinin aynası (src/SeatReservation.Api + Application). Enum'lar JSON'da ad olarak gelir.
 export type SeatStatus = 'Available' | 'Held' | 'Sold'
-export type ReservationStatus = 'Held' | 'Confirmed' | 'Expired'
+export type ReservationStatus = 'Held' | 'Confirmed' | 'Expired' | 'Cancelled'
 export type UserRole = 'User' | 'Admin'
 
 export interface EventSummary {

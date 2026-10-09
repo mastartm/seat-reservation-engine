@@ -26,13 +26,13 @@ export const LEGEND: { state: SeatDisplayState; text: string }[] = [
 ]
 
 /**
- * Rezervasyonlarımdan "koltuk → geçerli rezervasyon" haritası. Süresi dolmuş (Expired) olanlar dışarıda kalır;
+ * Rezervasyonlarımdan "koltuk → geçerli rezervasyon" haritası. Süresi dolmuş (Expired) ve vazgeçilmiş (Cancelled) olanlar dışarıda kalır;
  * aynı koltuğu sonradan yeniden tuttuysam en yeni kayıt kazanır.
  */
 export function activeReservationsBySeat(reservations: readonly ReservationView[]): Map<string, ReservationView> {
   const map = new Map<string, ReservationView>()
   const sorted = [...reservations]
-    .filter((r) => r.status !== 'Expired')
+    .filter((r) => r.status !== 'Expired' && r.status !== 'Cancelled')
     .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))
   for (const r of sorted) map.set(r.seatId, r)
   return map
