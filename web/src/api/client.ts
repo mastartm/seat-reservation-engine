@@ -75,5 +75,7 @@ export const api = {
   holdSeat: (seatId: string) => request<ReservationView>('POST', `/api/seats/${seatId}/hold`),
   confirm: (reservationId: string) =>
     request<ReservationView>('POST', `/api/reservations/${reservationId}/confirm`),
+  cancel: (reservationId: string) =>
+    request<ReservationView>('POST', `/api/reservations/${reservationId}/cancel`),
   myReservations: () => request<ReservationView[]>('GET', '/api/reservations/mine'),
 }

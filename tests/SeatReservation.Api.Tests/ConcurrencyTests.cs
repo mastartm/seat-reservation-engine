@@ -121,4 +121,68 @@ public sealed class ConcurrencyTests : IDisposable
         Assert.Equal(1, statuses.Count(s => s == HttpStatusCode.OK));
         Assert.Equal(19, statuses.Count(s => s == HttpStatusCode.Conflict));
     }
+
+    private static async Task<Guid> HoldReservationAsync(HttpClient client, Guid seatId)
+    {
+        var hold = await client.PostAsync($"/api/seats/{seatId}/hold", null);
+        return (await hold.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+    }
+
+    [Fact]
+    public async Task Parallel_cancels_of_same_reservation_succeed_once_and_free_the_seat()
+    {
+        var seatId = (await factory.CreateEventAsync()).Single();
+        var (_, token) = await factory.CreateUserAsync();
+        var client = factory.CreateClientWithToken(token);
+        var reservationId = await HoldReservationAsync(client, seatId);
+
+        var statuses = await RunSimultaneouslyAsync(
+            Enumerable.Range(0, 20).Select<int, Func<Task<HttpStatusCode>>>(_ =>
+                async () => (await client.PostAsync($"/api/reservations/{reservationId}/cancel", null)).StatusCode));
+
+        Assert.Equal(1, statuses.Count(s => s == HttpStatusCode.OK));
+        Assert.Equal(19, statuses.Count(s => s == HttpStatusCode.Conflict));
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(SeatStatus.Available, (await db.Seats.SingleAsync(s => s.Id == seatId)).Status);
+    }
+
+    [Fact]
+    public async Task Cancel_racing_with_confirm_exactly_one_wins_and_state_stays_consistent()
+    {
+        // Aynı rezervasyonda iptal ↔ onay yarışı. Tek atışlık şansı elemek için 15 koltuk/tur.
+        const int rounds = 15;
+        var seatIds = await factory.CreateEventAsync(rows: 1, seatsPerRow: rounds);
+        var (_, token) = await factory.CreateUserAsync();
+        var client = factory.CreateClientWithToken(token);
+        var reservationIds = new List<Guid>();
+        foreach (var seatId in seatIds) reservationIds.Add(await HoldReservationAsync(client, seatId));
+
+        var results = await RunSimultaneouslyAsync(reservationIds.SelectMany(id => new[]
+        {
+            Call(id, "cancel"),
+            Call(id, "confirm"),
+        }));
+
+        Func<Task<(Guid Id, string Action, HttpStatusCode Status)>> Call(Guid id, string action) =>
+            async () => (id, action, (await client.PostAsync($"/api/reservations/{id}/{action}", null)).StatusCode);
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        foreach (var (id, seatId) in reservationIds.Zip(seatIds))
+        {
+            var pair = results.Where(r => r.Id == id).ToList();
+            Assert.Equal(1, pair.Count(r => r.Status == HttpStatusCode.OK));
+            Assert.Equal(1, pair.Count(r => r.Status == HttpStatusCode.Conflict));
+
+            // Kazanan neyse veritabanındaki iki satır da ona uyar: yarım/çelişkili durum (ör. Confirmed + Available) yok.
+            var winner = pair.Single(r => r.Status == HttpStatusCode.OK).Action;
+            var reservation = await db.Reservations.SingleAsync(r => r.Id == id);
+            var seat = await db.Seats.SingleAsync(s => s.Id == seatId);
+            if (winner == "confirm")
+                Assert.Equal((ReservationStatus.Confirmed, SeatStatus.Sold), (reservation.Status, seat.Status));
+            else
+                Assert.Equal((ReservationStatus.Cancelled, SeatStatus.Available), (reservation.Status, seat.Status));
+        }
+    }
 }

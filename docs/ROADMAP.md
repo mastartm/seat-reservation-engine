@@ -16,7 +16,7 @@ Temel soru: **iki kişi aynı koltuğu aynı anda almaya çalışırsa ne olur?*
 - [x] `docs/ARCHITECTURE.md` ve `docs/INTERVIEW.md` ilk sürüm
 
 ## Aşama 2 — Arayüz ve canlı demo
-- [x] React + Vite + Tailwind, `web/` klasöründe — _35 bileşen/akış testi, CI'da `web` işi (lint + test + build)_
+- [x] React + Vite + Tailwind, `web/` klasöründe — _40 bileşen/akış testi, CI'da `web` işi (lint + test + build)_
 - [x] Koltuk haritası, anlık durum güncellemesi (polling, 3 sn) — _hold/onay + 10 dk geri sayım dahil_
 - [x] Giriş ekranı, "Rezervasyonlarım"
 - [x] Demo için örnek veri (seed) ve tek tıkla demo girişi — _`Demo__Enabled=true`; gerçek SQL Server'da doğrulandı_
@@ -28,7 +28,8 @@ Temel soru: **iki kişi aynı koltuğu aynı anda almaya çalışırsa ne olur?*
 - [ ] Demo GIF'i — _proje sahibi çekecek (canlı demo veya `docker compose` ekranı)_
 - [x] README'de "Neden böyle tasarlandı?" bölümü
 - [x] Kod temizliği: arayüz lint uyarıları giderildi; eş zamanlı kayıt 500 → 409; demo ucuna hız sınırı (429)
-- [ ] CI'da SQL Server'a karşı koşan test işi (şimdilik testler SQLite'ta)
+- [x] CI'da SQL Server'a karşı koşan test işi — _`sqlserver` işi: eş zamanlılık testleri SQL Server 2022'ye karşı; yerelde SQL Server konteynerinde doğrulandı, GitHub'da henüz koşmadı_
+- [x] Kullanıcı kendi tutmasından vazgeçebilir (`POST /api/reservations/{id}/cancel`, hold bandında "Vazgeç"; onaylanmış rezervasyon iptal edilemez) — _iptal↔onay↔süre dolumu yarışı testli_
 
 ## Bilinçli olarak yapılmayanlar
 Ödeme entegrasyonu, e-posta, mikroservis. Kapsam dışı, README'de "sonraki adımlar" olarak anılır.

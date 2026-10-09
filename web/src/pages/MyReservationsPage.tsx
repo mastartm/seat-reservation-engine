@@ -12,7 +12,7 @@ interface Props {
   onBrowse: () => void
 }
 
-type Effective = 'active' | 'confirmed' | 'expired'
+type Effective = 'active' | 'confirmed' | 'cancelled' | 'expired'
 
 /**
  * Sunucu süresi dolan tutmayı arka plan servisiyle (30 sn aralıkla) "Expired"a çevirir; o ana kadar kayıt "Held"
@@ -20,6 +20,7 @@ type Effective = 'active' | 'confirmed' | 'expired'
  */
 function effectiveState(r: ReservationView, now: number): Effective {
   if (r.status === 'Confirmed') return 'confirmed'
+  if (r.status === 'Cancelled') return 'cancelled'
   if (r.status === 'Held' && Date.parse(r.expiresAt) > now) return 'active'
   return 'expired'
 }
@@ -27,6 +28,7 @@ function effectiveState(r: ReservationView, now: number): Effective {
 const BADGE: Record<Effective, { text: string; className: string }> = {
   active: { text: 'Tutuluyor', className: 'bg-indigo-100 text-indigo-800' },
   confirmed: { text: 'Satın alındı', className: 'bg-emerald-100 text-emerald-800' },
+  cancelled: { text: 'Vazgeçildi', className: 'bg-slate-200 text-slate-600' },
   expired: { text: 'Süresi doldu', className: 'bg-slate-200 text-slate-600' },
 }
 
@@ -69,7 +71,7 @@ export function MyReservationsPage({ reservations, error, events, onChanged, onB
         {sorted.map((r) => {
           const state = effectiveState(r, now)
           if (state === 'active') {
-            return <HoldCard key={r.id} reservation={r} onExpire={onChanged} onConfirmed={onChanged} />
+            return <HoldCard key={r.id} reservation={r} onExpire={onChanged} onConfirmed={onChanged} onCancelled={onChanged} />
           }
           const badge = BADGE[state]
           return (

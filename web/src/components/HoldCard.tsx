@@ -10,6 +10,8 @@ interface Props {
   onExpire: (reservation: ReservationView) => void
   /** Onay başarıyla tamamlanınca. */
   onConfirmed: (reservation: ReservationView) => void
+  /** Kullanıcı "Vazgeç" deyip sunucu tutmayı iptal edince. */
+  onCancelled: (reservation: ReservationView) => void
   /** "Süre doldu" kartını kapatır. */
   onDismiss?: (reservation: ReservationView) => void
 }
@@ -17,13 +19,14 @@ interface Props {
 const WARNING_MS = 60_000
 
 /**
- * Tutulan koltuğun 10 dakikalık geri sayımı ve onay düğmesi.
+ * Tutulan koltuğun 10 dakikalık geri sayımı, onay ve vazgeçme düğmeleri.
  * Kalan süre sunucunun verdiği `expiresAt`'ten, sunucu saatine göre hesaplanır (bkz. lib/clock.ts);
  * asıl yetki yine sunucudadır: süre dolduktan sonra gelen onay isteği orada 409 ile reddedilir.
  */
-export function HoldCard({ reservation, onExpire, onConfirmed, onDismiss }: Props) {
+export function HoldCard({ reservation, onExpire, onConfirmed, onCancelled, onDismiss }: Props) {
   const now = useServerNow(1000)
-  const [busy, setBusy] = useState(false)
+  // Hangi işlem sürüyor: iki düğme de kilitlenir (onay ile vazgeç aynı anda gönderilmesin), metin yalnızca basılanı anlatır.
+  const [busy, setBusy] = useState<'confirm' | 'cancel' | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const total = Date.parse(reservation.expiresAt) - Date.parse(reservation.createdAt)
@@ -38,15 +41,16 @@ export function HoldCard({ reservation, onExpire, onConfirmed, onDismiss }: Prop
     }
   }, [expired, onExpire, reservation])
 
-  async function confirm() {
-    setBusy(true)
+  async function act(kind: 'confirm' | 'cancel') {
+    setBusy(kind)
     setError(null)
     try {
-      onConfirmed(await api.confirm(reservation.id))
+      if (kind === 'confirm') onConfirmed(await api.confirm(reservation.id))
+      else onCancelled(await api.cancel(reservation.id))
     } catch (e) {
-      // 409: süre dolmuş ya da koltuk artık bizde değil; kullanıcı nedenini sunucunun mesajından okur.
-      setError(e instanceof ApiError ? e.message : 'Onaylama başarısız oldu.')
-      setBusy(false)
+      // 409: süre dolmuş, koltuk artık bizde değil ya da zaten satın alınmış; sunucunun mesajı nedeni söyler.
+      setError(e instanceof ApiError ? e.message : kind === 'confirm' ? 'Onaylama başarısız oldu.' : 'Vazgeçme başarısız oldu.')
+      setBusy(null)
     }
   }
 
@@ -100,14 +104,25 @@ export function HoldCard({ reservation, onExpire, onConfirmed, onDismiss }: Prop
         </p>
       )}
 
-      <button
-        type="button"
-        onClick={confirm}
-        disabled={busy}
-        className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-      >
-        {busy ? 'Onaylanıyor…' : `${reservation.seatLabel} için satın almayı onayla`}
-      </button>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => void act('confirm')}
+          disabled={busy !== null}
+          className="flex-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+        >
+          {busy === 'confirm' ? 'Onaylanıyor…' : `${reservation.seatLabel} için satın almayı onayla`}
+        </button>
+        <button
+          type="button"
+          onClick={() => void act('cancel')}
+          disabled={busy !== null}
+          aria-label={`${reservation.seatLabel} için vazgeç`}
+          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+        >
+          {busy === 'cancel' ? 'Bırakılıyor…' : 'Vazgeç'}
+        </button>
+      </div>
     </li>
   )
 }
