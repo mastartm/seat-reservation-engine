@@ -10,7 +10,9 @@ using SeatReservation.Infrastructure.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+// Enum'lar JSON'da sayı değil ad olarak gider ("Held"): istemci ve Swagger için okunabilir, sıra değişse bozulmaz.
+builder.Services.AddControllers().AddJsonOptions(o =>
+    o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
