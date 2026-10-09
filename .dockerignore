@@ -5,3 +5,6 @@
 .env
 .env.*
 README.md
+# Arayüz kendi imajında derlenir (web/Dockerfile); API imajına girmesin (node_modules büyük).
+web
+docs
