@@ -10,7 +10,7 @@ Temel soru: **iki kişi aynı koltuğu aynı anda almaya çalışırsa ne olur?*
 - [x] Hold süresi dolunca otomatik serbest bırakan arka plan servisi (`BackgroundService`)
 - [x] JWT ile kayıt/giriş, rol (Admin / Kullanıcı)
 - [x] Testler: domain birim testleri + **eş zamanlılık testi** (örn. 100 paralel istek, tek koltuk, tam 1 başarılı)
-- [ ] Docker: `docker compose up` ile API + SQL Server çalışır, migration otomatik uygulanır — _yapılandırma hazır, `docker compose config` ve yayımlanmış API ile doğrulandı; Docker daemon olmayan ortamda uçtan uca çalıştırılamadı, ilk gerçek `docker compose up` ile onaylanmalı_
+- [x] Docker: `docker compose up` ile API + SQL Server çalışır, migration otomatik uygulanır — _gerçek SQL Server konteynerinde doğrulandı (2026-10-09): `/health` 200, aynı koltuğa 100 paralel hold isteğinde 1 adet 201 + 99 adet 409_
 - [x] CI: build + test yeşil — _`.github/workflows/ci.yml` ile aynı komutlar yerelde yeşil; GitHub'da henüz koşmadı_
 - [x] Swagger arayüzü
 - [x] `docs/ARCHITECTURE.md` ve `docs/INTERVIEW.md` ilk sürüm
