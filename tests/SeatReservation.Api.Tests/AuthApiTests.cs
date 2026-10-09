@@ -34,6 +34,29 @@ public class AuthApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Register_same_email_in_parallel_yields_exactly_one_created_and_rest_conflict_never_500()
+    {
+        const int contenders = 20;
+        var email = NewEmail();
+        var client = factory.CreateClient(); // test sunucusu tek seferde, paralellikten önce ayağa kalksın
+        var gate = new TaskCompletionSource();
+
+        // Her istek "e-posta var mı?" kontrolünü geçebilsin diye hepsi aynı anda salınır (yarış koşulu).
+        var tasks = Enumerable.Range(0, contenders).Select(_ => Task.Run(async () =>
+        {
+            await gate.Task;
+            var response = await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password });
+            return response.StatusCode;
+        })).ToArray();
+        await Task.Delay(100);
+        gate.SetResult();
+        var statuses = await Task.WhenAll(tasks);
+
+        Assert.Equal(1, statuses.Count(s => s == HttpStatusCode.Created));
+        Assert.Equal(contenders - 1, statuses.Count(s => s == HttpStatusCode.Conflict));
+    }
+
+    [Fact]
     public async Task Register_same_email_twice_is_conflict_regardless_of_case()
     {
         var client = factory.CreateClient();
