@@ -137,8 +137,8 @@ Gerçek bir üründe BFF + `HttpOnly` çerezi ya da kısa ömürlü access + ref
 
 **A6. Demo girişi için neden sabit bir demo kullanıcısı yapmadın?**
 Sabit kimlik = repoda herkesin bildiği parola (kural: parola commit'lenmez) ve ziyaretçiler birbirinin rezervasyonlarını görür.
-`POST /api/auth/demo` her çağrıda tek kullanımlık misafir hesabı açar; parola özeti rastgele, kimse bilmiyor. Eksik: hız sınırı
-yok, kötüye kullanım veritabanını şişirir (bilinen sınır). (§11.8)
+`POST /api/auth/demo` her çağrıda tek kullanımlık misafir hesabı açar; parola özeti rastgele, kimse bilmiyor. Hız sınırı: dakikada
+en çok 30 misafir (genel sınır, aşılınca 429); istemci başına değil, çünkü proxy arkasında gerçek IP için ayrı yapılandırma gerekir. (§11.8)
 
 **A7. CORS'u nasıl yönettin?**
 Geliştirmede Vite proxy'si `/api`'yi yönlendirir (aynı origin), compose'ta nginx aynısını yapar: CORS gerekmez. Canlıda
@@ -157,7 +157,6 @@ SQL Server + tarayıcıyla iki bağlamlı elle doğrulama yaptım ama bu otomati
 ## Bilinen eksikler (sorulursa dürüst cevap)
 
 * Testler SQL Server yerine SQLite'ta koşar (soru 4).
-* Aynı e-postayla tam eşzamanlı iki kayıt isteği 500 döner (benzersiz indeks ihlali); 409'a çevrilmeli.
 * Kullanıcı başına hold limiti yok.
-* Arayüz için otomatik E2E testi yok (yalnızca elle doğrulandı); demo ucunda hız sınırı yok.
+* Arayüz için otomatik E2E testi yok (yalnızca elle doğrulandı); demo hız sınırı genel (istemci başına değil).
 * Kullanıcı tutmasından vazgeçemez (iptal ucu yok); koltuk süre dolunca boşalır.

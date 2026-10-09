@@ -128,8 +128,9 @@ Sorun giderme:
 
 ## 8. Güvenlik notları
 
-- **Demo modu herkese açık hesap üretir.** `POST /api/auth/demo` hız sınırsızdır: biri döngüyle çağırırsa veritabanı
-  misafir kullanıcıyla dolar. Demo için kabul edilebilir, gerçek ürün için değil; hız sınırlama Aşama 3 / "bilinen sınırlar" listesinde.
+- **Demo modu herkese açık hesap üretir.** `POST /api/auth/demo` dakikada en çok 30 misafir açar (`Demo__MaxSessionsPerMinute`, aşılınca 429);
+  bu genel bir sınırdır, istemci başına değil. Yine de biri yavaş yavaş veritabanını misafirle doldurabilir. Demo için kabul
+  edilebilir, gerçek ürün için değil.
   Demo işin bitince `Demo__Enabled`'ı kapatabilirsin (var olan veri kalır, yeni misafir açılmaz).
 - Veritabanına **gerçek kişisel veri koyma**. Misafir e-postaları `misafir-…@demo.local`'dır.
 - Veritabanı parolası ve `Jwt__Key` yalnızca Render panelinde durur. Sızdığından şüphelenirsen: Azure'da parolayı sıfırla,
