@@ -12,6 +12,7 @@ public static class DependencyInjection
         services.AddScoped<AuthService>();
         services.AddScoped<EventService>();
         services.AddScoped<ReservationService>();
+        services.AddScoped<HoldExpirationService>();
         services.AddOptions<ReservationOptions>();
         return services;
     }

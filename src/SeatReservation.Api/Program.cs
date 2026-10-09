@@ -23,6 +23,8 @@ builder.Services.Configure<SeatReservation.Application.Reservations.ReservationO
     builder.Configuration.GetSection(SeatReservation.Application.Reservations.ReservationOptions.SectionName));
 builder.Services.AddInfrastructure();
 
+builder.Services.AddHostedService<SeatReservation.Api.BackgroundServices.HoldExpirationWorker>();
+
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddProblemDetails();
 

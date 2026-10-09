@@ -34,6 +34,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
             services.AddDbContext<AppDbContext, SqliteAppDbContext>(o =>
                 o.UseSqlite($"Data Source={_dbPath};Default Timeout=30"));
 
+            // Arka plan servisi testlerde kapalı: gerçek zamanlayıcı sahte saatle yarışıp testleri belirsizleştirirdi.
+            // Tarama mantığı HoldExpirationService üzerinden doğrudan, worker ise ayrı bir testte elle sınanır.
+            services.RemoveAll<IHostedService>();
+
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Time);
         });
