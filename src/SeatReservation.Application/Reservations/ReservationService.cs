@@ -46,4 +46,23 @@ public sealed class ReservationService(
 
         return ReservationView.From(reservation);
     }
+
+    /// <summary>
+    /// Satın almayı onaylar. Kural kontrolleri (sahiplik, süre, durum) domain'de; burada sadece yükle-uygula-kaydet.
+    /// Onay ile süre dolum servisi aynı anda aynı koltuğa dokunursa RowVersion biri geçirir, diğeri 409 alır:
+    /// onaylanmış koltuk yanlışlıkla serbest kalamaz.
+    /// </summary>
+    public async Task<ReservationView> ConfirmAsync(Guid userId, Guid reservationId, CancellationToken ct)
+    {
+        var reservation = await reservations.GetWithSeatAsync(reservationId, ct)
+                          ?? throw new NotFoundException("Rezervasyon bulunamadı.");
+
+        reservation.Confirm(userId, time.GetUtcNow());
+        await uow.SaveChangesAsync(ct);
+
+        return ReservationView.From(reservation);
+    }
+
+    public async Task<IReadOnlyList<ReservationView>> ListMineAsync(Guid userId, CancellationToken ct) =>
+        (await reservations.ListByUserAsync(userId, ct)).Select(ReservationView.From).ToList();
 }
