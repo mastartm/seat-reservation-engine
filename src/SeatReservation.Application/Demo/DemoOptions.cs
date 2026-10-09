@@ -16,4 +16,10 @@ public sealed class DemoOptions
     /// Amaç, bir döngünün veritabanını misafirlerle doldurmasını yavaşlatmaktır. 0'dan büyük olmalı.
     /// </summary>
     public int MaxSessionsPerMinute { get; set; } = 30;
+
+    /// <summary>
+    /// Demo modunda misafirlerin onayladığı koltuğun serbest kalacağı süre (onaydan itibaren). Böylece biri tüm koltukları
+    /// alsa bile demo kendini toparlar. Tohum veri etkilenmez. Sıfır ya da negatif: temizlik kapalı.
+    /// </summary>
+    public TimeSpan GuestSaleLifetime { get; set; } = TimeSpan.FromMinutes(30);
 }

@@ -64,6 +64,17 @@ public sealed class Seat
         HoldExpiresAt = null;
     }
 
+    /// <summary>Satılmış koltuğu boşaltır. Yalnızca <see cref="Reservation.RevokeSale"/> çağırır (demo temizliği).</summary>
+    internal void ReleaseSale(Guid reservationId)
+    {
+        // Koltuk bu satışa ait değilse dokunma.
+        if (Status != SeatStatus.Sold || ActiveReservationId != reservationId) return;
+
+        Status = SeatStatus.Available;
+        ActiveReservationId = null;
+        HoldExpiresAt = null;
+    }
+
     internal void ReleaseHold(Guid reservationId)
     {
         // Koltuk bu arada başkasına geçtiyse (veya satıldıysa) dokunma.

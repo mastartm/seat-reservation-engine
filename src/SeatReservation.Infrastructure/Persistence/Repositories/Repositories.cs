@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SeatReservation.Application.Abstractions;
 using SeatReservation.Application.Common;
+using SeatReservation.Application.Demo;
 using SeatReservation.Domain.Entities;
 using SeatReservation.Domain.Enums;
 
@@ -52,6 +53,22 @@ internal sealed class ReservationRepository(AppDbContext db) : IReservationRepos
         await db.Reservations.Include(r => r.Seat)
             .Where(r => r.Status == ReservationStatus.Held && r.ExpiresAt <= now)
             .OrderBy(r => r.ExpiresAt)
+            .Take(take)
+            .ToListAsync(ct);
+
+    public Task<int> CountActiveByUserAsync(Guid userId, DateTimeOffset now, CancellationToken ct) =>
+        db.Reservations.CountAsync(r => r.UserId == userId
+            && (r.Status == ReservationStatus.Confirmed
+                || (r.Status == ReservationStatus.Held && r.ExpiresAt > now)), ct);
+
+    public async Task<IReadOnlyList<Reservation>> ListConfirmedGuestSalesAsync(DateTimeOffset confirmedBefore, int take, CancellationToken ct) =>
+        await db.Reservations.Include(r => r.Seat)
+            .Where(r => r.Status == ReservationStatus.Confirmed
+                && r.ConfirmedAt <= confirmedBefore
+                && db.Users.Any(u => u.Id == r.UserId
+                    && u.Email.StartsWith(DemoAccounts.GuestPrefix)
+                    && u.Email.EndsWith(DemoAccounts.ReservedDomain)))
+            .OrderBy(r => r.ConfirmedAt)
             .Take(take)
             .ToListAsync(ct);
 }

@@ -26,6 +26,10 @@ public sealed class AuthService(
             throw new RequestValidationException($"Parola en az {MinPasswordLength} karakter olmalı.");
 
         var user = User.Create(email, hasher.Hash(password), UserRole.User, time.GetUtcNow());
+        // Demo hesapları (misafir, tohum sahibi) bu alan adını kullanır; biri bu alan adıyla kayıt olup misafir gibi
+        // davranmasın (demo temizliği misafirleri e-postasından tanır).
+        if (DemoAccounts.IsReservedDomain(user.Email))
+            throw new RequestValidationException($"{DemoAccounts.ReservedDomain} alan adı demo hesaplarına ayrılmıştır.");
         if (await users.FindByEmailAsync(user.Email, ct) is not null)
             throw new EmailAlreadyRegisteredException("Bu e-posta zaten kayıtlı.");
 
@@ -64,7 +68,7 @@ public sealed class AuthService(
     {
         if (!demo.Value.Enabled) throw new NotFoundException("Demo girişi bu sunucuda kapalı.");
 
-        var user = User.Create($"misafir-{Guid.NewGuid().ToString("N")[..12]}@demo.local", hasher.DummyHash, UserRole.User, time.GetUtcNow());
+        var user = User.Create(DemoAccounts.NewGuestEmail(), hasher.DummyHash, UserRole.User, time.GetUtcNow());
         await users.AddAsync(user, ct);
         await uow.SaveChangesAsync(ct);
         return ToResult(user);

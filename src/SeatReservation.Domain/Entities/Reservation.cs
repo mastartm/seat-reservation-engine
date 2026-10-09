@@ -68,6 +68,21 @@ public sealed class Reservation
     }
 
     /// <summary>
+    /// Onaylanmış satın almayı sistem olarak geri alır ve koltuğu boşaltır (<c>Confirmed → Cancelled</c>).
+    /// Kullanıcı bunu çağıramaz: "Satıldı" kullanıcı için son durumdur (<see cref="Cancel"/>). Yalnızca demo modunda,
+    /// misafirlerin aldığı koltukların ziyaretçiler tarafından tüketilmemesi için süre dolunca çalışan temizlik kullanır.
+    /// Onaylanmamış rezervasyona dokunmaz; false döner.
+    /// </summary>
+    public bool RevokeSale()
+    {
+        if (Status != ReservationStatus.Confirmed) return false;
+
+        Seat.ReleaseSale(Id);
+        Status = ReservationStatus.Cancelled;
+        return true;
+    }
+
+    /// <summary>
     /// Süresi dolmuş tutmayı kapatır ve koltuğu serbest bırakır.
     /// Süresi dolmamış ya da zaten sonuçlanmış rezervasyona dokunmaz; false döner.
     /// </summary>

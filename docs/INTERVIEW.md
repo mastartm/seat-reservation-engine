@@ -172,9 +172,15 @@ SQL Server + tarayıcıyla iki bağlamlı elle doğrulama yaptım ama bu otomati
 3 görünüm ve tek paylaşılan durum (oturum) var; `useState` + Context yeterli. Veri çekme ihtiyacı tek bir ~50 satırlık
 `usePolled` kancası. Gereksiz kütüphane eklememe kuralı; her biri kodu açıklanabilir tutar. (§11.1)
 
+**A10. Biri tüm koltukları alırsa ne olur? Canlı demo nasıl dolu kalıyor?**
+İki katman. (1) Kullanıcı başına aktif koltuk sınırı (varsayılan 6: süresi dolmamış tutma + onaylı satın alma), aşılınca 409; tek kişi salonu
+alamaz. (2) Demo modunda misafirlerin onayladığı koltuklar 30 dakika sonra serbest kalır; tohum veri ve gerçek kullanıcılar korunur. İkincisi
+olmadan zararsız ziyaretçiler bile haritayı zamanla tamamen "Satıldı" yapardı. Sınır kontrol-sonra-yaz olduğu için paralel isteklerle birkaç
+koltuk aşılabilir; doğruluğu bozmaz, çünkü koltuğun sahibini yine RowVersion belirler.
+
 ## Bilinen eksikler (sorulursa dürüst cevap)
 
 * Eş zamanlılık dışındaki testler ve yerel `dotnet test` SQLite'ta koşar; SQL Server'a karşı yalnızca eş zamanlılık alt kümesi CI'da koşar (soru 4).
-* Kullanıcı başına hold limiti yok.
+* Kullanıcı başına koltuk sınırı kontrol-sonra-yaz: aynı kullanıcının paralel istekleri sınırı birkaç koltuk aşabilir (soru A10).
 * Arayüz için otomatik E2E testi yok (yalnızca elle doğrulandı); demo hız sınırı genel (istemci başına değil).
 * Onaylanmış (satın alınmış) rezervasyon iptal/iade edilemez; ödeme akışı kapsam dışı (soru 23).
