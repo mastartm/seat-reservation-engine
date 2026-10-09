@@ -8,7 +8,7 @@ using SeatReservation.Domain.Enums;
 
 namespace SeatReservation.Infrastructure.Persistence;
 
-/// <summary>Açılışta (isteğe bağlı) migration uygular ve (isteğe bağlı) ilk Admin kullanıcıyı oluşturur.</summary>
+/// <summary>Açılışta (isteğe bağlı) migration uygular, demo verisini tohumlar ve (isteğe bağlı) ilk Admin kullanıcıyı oluşturur.</summary>
 public static class DatabaseInitializer
 {
     public static async Task InitializeAsync(IServiceProvider services, CancellationToken ct = default)
@@ -25,6 +25,10 @@ public static class DatabaseInitializer
             logger.LogInformation("Migration'lar uygulanıyor...");
             await db.Database.MigrateAsync(ct);
         }
+
+        // Demo verisi Admin ayarından bağımsız: ziyaretçi için etkinlik/koltuk görünsün diye Admin gerekmez.
+        if (config.GetValue<bool>("Demo:Enabled"))
+            await DemoDataSeeder.SeedAsync(sp, ct);
 
         // Admin e-posta/parolası commit'lenmez; yalnızca ortam değişkeninden (Admin__Email, Admin__Password) gelir.
         var email = config["Admin:Email"];

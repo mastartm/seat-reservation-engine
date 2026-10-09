@@ -29,8 +29,20 @@ services:
       # İlk Admin kullanıcı; ikisi de boşsa oluşturulmaz.
       Admin__Email: ${ADMIN_EMAIL:-}
       Admin__Password: ${ADMIN_PASSWORD:-}
+      # Demo modu: örnek etkinlikler + POST /api/auth/demo (tek tıkla misafir girişi). Canlı demoda true.
+      Demo__Enabled: ${DEMO_ENABLED:-false}
+      # Arayüz başka bir alan adındaysa onun adresi (virgülle ayrılmış). Boşsa CORS kapalı.
+      Cors__AllowedOrigins: ${CORS_ALLOWED_ORIGINS:-}
     ports:
       - "8080:8080"
+
+  # Arayüz: Vite çıktısını nginx sunar ve /api'yi API'ye iletir → http://localhost:3000
+  web:
+    build: ./web
+    depends_on:
+      - api
+    ports:
+      - "3000:80"
 
 volumes:
   sqldata:

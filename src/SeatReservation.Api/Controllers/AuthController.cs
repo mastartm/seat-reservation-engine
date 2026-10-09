@@ -24,6 +24,12 @@ public class AuthController(AuthService auth) : ControllerBase
     public async Task<IActionResult> Login(LoginRequest request, CancellationToken ct) =>
         Ok(await auth.LoginAsync(request.Email, request.Password, ct));
 
+    /// <summary>Demo modunda (Demo__Enabled=true) tek kullanımlık misafir hesabı açar ve giriş yaptırır; kapalıysa 404.</summary>
+    [HttpPost("demo")]
+    [ProducesResponseType<AuthResult>(StatusCodes.Status201Created)]
+    public async Task<IActionResult> Demo(CancellationToken ct) =>
+        StatusCode(StatusCodes.Status201Created, await auth.CreateDemoSessionAsync(ct));
+
     /// <summary>Token'daki kimliği döner (Swagger'da "Authorize" sonrası denemek için).</summary>
     [HttpGet("me")]
     [Authorize]

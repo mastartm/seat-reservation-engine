@@ -16,3 +16,22 @@ jobs:
       - run: dotnet restore
       - run: dotnet build --no-restore -c Release
       - run: dotnet test --no-build -c Release
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      # `npm ci`: package-lock.json'a birebir uyar, uyuşmazsa hata verir (CI'da `npm install` yerine bu).
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      # `build` önce tsc -b ile tip denetimi yapar, sonra Vite paketler.
+      - run: npm run build
