@@ -13,6 +13,10 @@ Eş zamanlılık odaklı koltuk/randevu rezervasyon motoru. Temel soru: **iki ki
 > veritabanı da boşta duraklayıp ilk bağlantıda uyanır. Demo herkese açıktır; koltuklar başka ziyaretçilerce alınmış olabilir.
 > Canlı kurulum adımları: [`docs/DEPLOY.md`](docs/DEPLOY.md). Yol haritası: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
+![Demo: koltuk tut, geri sayım, onayla, vazgeç](docs/demo.gif)
+
+<sub>Demo girişi → koltuk tutma ve 10 dakikalık geri sayım → satın alma onayı → başka bir koltukta vazgeçme.</sub>
+
 ## Eş zamanlılık sonuçları
 
 Tek bir koltuğa N kullanıcı **aynı anda** istek atar (her satır 3 tur). Beklenen: tur başına tam 1 adet `201 Created`,
