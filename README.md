@@ -8,8 +8,10 @@ Eş zamanlılık odaklı koltuk/randevu rezervasyon motoru. Temel soru: **iki ki
 > ([sonuçlar aşağıda](#eş-zamanlılık-sonuçları)); otomatik testi: [`ConcurrencyTests`](tests/SeatReservation.Api.Tests/ConcurrencyTests.cs),
 > mekanizma: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §3.
 
-> Durum: backend ve arayüz tamam, yerelde `docker compose up` ile çalışır. Canlı demo yayını bekliyor
-> ([`docs/DEPLOY.md`](docs/DEPLOY.md)). Yol haritası: [`docs/ROADMAP.md`](docs/ROADMAP.md).
+> **Canlı demo: https://seat-reservation-engine.vercel.app** ("Demo ile dene" düğmesi kayıtsız giriş yaptırır.)
+> Ücretsiz katmanlarda çalışır (Vercel + Render + Azure SQL): **kullanılmayınca API uyur, ilk açılış ~50 saniye sürebilir**,
+> veritabanı da boşta duraklayıp ilk bağlantıda uyanır. Demo herkese açıktır; koltuklar başka ziyaretçilerce alınmış olabilir.
+> Canlı kurulum adımları: [`docs/DEPLOY.md`](docs/DEPLOY.md). Yol haritası: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Eş zamanlılık sonuçları
 
