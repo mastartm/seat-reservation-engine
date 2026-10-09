@@ -15,6 +15,13 @@ public class ReservationsController(ReservationService reservations) : Controlle
     public async Task<ReservationView> Confirm(Guid reservationId, CancellationToken ct) =>
         await reservations.ConfirmAsync(User.GetUserId(), reservationId, ct);
 
+    /// <summary>
+    /// Tutmadan vazgeçer; koltuk hemen boşalır. Yalnızca tutma sahibi (diğerleri 403); onaylanmış (satılmış) 409.
+    /// </summary>
+    [HttpPost("{reservationId:guid}/cancel")]
+    public async Task<ReservationView> Cancel(Guid reservationId, CancellationToken ct) =>
+        await reservations.CancelAsync(User.GetUserId(), reservationId, ct);
+
     /// <summary>Oturumdaki kullanıcının rezervasyonları (yeniden eskiye).</summary>
     [HttpGet("mine")]
     public async Task<IReadOnlyList<ReservationView>> Mine(CancellationToken ct) =>

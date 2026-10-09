@@ -100,4 +100,68 @@ public class ReservationTests
         Assert.False(reservation.Expire(Now.AddHours(1)));
         Assert.Equal(SeatStatus.Sold, seat.Status);
     }
+
+    [Fact]
+    public void Owner_can_cancel_and_the_seat_is_available_again_at_once()
+    {
+        var (seat, reservation, userId) = Held();
+
+        reservation.Cancel(userId, Now.AddMinutes(1));
+
+        Assert.Equal(ReservationStatus.Cancelled, reservation.Status);
+        Assert.Equal(SeatStatus.Available, seat.Status);
+        Assert.Null(seat.ActiveReservationId);
+        Assert.Null(seat.HoldExpiresAt);
+        // Başkası, süre dolmasını beklemeden hemen tutabilir.
+        Assert.Equal(SeatStatus.Held, seat.Hold(Guid.NewGuid(), Now.AddMinutes(1), TenMinutes).Seat.Status);
+    }
+
+    [Fact]
+    public void Non_owner_cannot_cancel()
+    {
+        var (seat, reservation, _) = Held();
+
+        Assert.Throws<NotHoldOwnerException>(() => reservation.Cancel(Guid.NewGuid(), Now.AddMinutes(1)));
+        Assert.Equal(ReservationStatus.Held, reservation.Status);
+        Assert.Equal(SeatStatus.Held, seat.Status);
+    }
+
+    [Fact]
+    public void Confirmed_reservation_cannot_be_cancelled()
+    {
+        var (seat, reservation, userId) = Held();
+        reservation.Confirm(userId, Now.AddMinutes(1));
+
+        Assert.Throws<InvalidStateTransitionException>(() => reservation.Cancel(userId, Now.AddMinutes(2)));
+        Assert.Equal(ReservationStatus.Confirmed, reservation.Status);
+        Assert.Equal(SeatStatus.Sold, seat.Status);
+    }
+
+    [Fact]
+    public void Cannot_cancel_twice()
+    {
+        var (_, reservation, userId) = Held();
+        reservation.Cancel(userId, Now.AddMinutes(1));
+
+        Assert.Throws<InvalidStateTransitionException>(() => reservation.Cancel(userId, Now.AddMinutes(2)));
+    }
+
+    [Fact]
+    public void Cannot_cancel_after_expiry()
+    {
+        var (seat, reservation, userId) = Held();
+
+        Assert.Throws<HoldExpiredException>(() => reservation.Cancel(userId, Now + TenMinutes));
+        Assert.Equal(ReservationStatus.Held, reservation.Status); // iptal olarak yazılmaz; süre dolumu servisi kapatır
+        Assert.Equal(SeatStatus.Held, seat.Status);
+    }
+
+    [Fact]
+    public void Cancelled_reservation_cannot_be_confirmed()
+    {
+        var (_, reservation, userId) = Held();
+        reservation.Cancel(userId, Now.AddMinutes(1));
+
+        Assert.Throws<InvalidStateTransitionException>(() => reservation.Confirm(userId, Now.AddMinutes(2)));
+    }
 }

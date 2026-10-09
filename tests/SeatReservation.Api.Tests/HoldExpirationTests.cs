@@ -119,6 +119,41 @@ public sealed class HoldExpirationTests : IDisposable
     }
 
     [Fact]
+    public async Task Cancel_racing_with_sweep_cannot_both_win()
+    {
+        var (reservationId, seatId, userId, _) = await HoldAsync();
+
+        // A: iptal isteği süre dolmadan koltuğu okuyup iptali uyguladı ama henüz kaydetmedi.
+        // (Aynı saatte iptal de tarama da çalışamaz: biri "süre dolmadı", öbürü "doldu" ister. Gerçek yarış, saatin
+        // okuma ile yazma arasında ilerlediği durumdur; bu yüzden araya giren yazma elle sıralanır.)
+        using var scopeA = factory.Services.CreateScope();
+        var reservation = await scopeA.ServiceProvider.GetRequiredService<IReservationRepository>()
+            .GetWithSeatAsync(reservationId, default);
+        reservation!.Cancel(userId, factory.Time.GetUtcNow().AddMinutes(9));
+
+        // B: süre dolduktan sonra tarama koltuğu serbest bırakıp kaydetti.
+        factory.Time.Advance(TimeSpan.FromMinutes(10));
+        Assert.Equal(1, await SweepAsync());
+
+        // A kaydetmeye çalışınca RowVersion uyuşmaz: iptal kaybeder, kayıt "Expired" kalır (Cancelled'a ezilmez).
+        await Assert.ThrowsAsync<ConcurrencyConflictException>(() =>
+            scopeA.ServiceProvider.GetRequiredService<IUnitOfWork>().SaveChangesAsync(default));
+        Assert.Equal((SeatStatus.Available, ReservationStatus.Expired), await StoredStatesAsync(seatId, reservationId));
+    }
+
+    [Fact]
+    public async Task Sweep_leaves_cancelled_reservations_alone()
+    {
+        var (reservationId, seatId, _, client) = await HoldAsync();
+        await client.PostAsync($"/api/reservations/{reservationId}/cancel", null);
+        factory.Time.Advance(TimeSpan.FromHours(1));
+
+        Assert.Equal(0, await SweepAsync());
+
+        Assert.Equal((SeatStatus.Available, ReservationStatus.Cancelled), await StoredStatesAsync(seatId, reservationId));
+    }
+
+    [Fact]
     public async Task Worker_releases_expired_holds_on_its_own()
     {
         var (reservationId, seatId, _, _) = await HoldAsync();

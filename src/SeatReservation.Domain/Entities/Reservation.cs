@@ -36,12 +36,35 @@ public sealed class Reservation
             throw new NotHoldOwnerException("Bu rezervasyonu yalnızca tutan kullanıcı onaylayabilir.");
         if (Status == ReservationStatus.Confirmed)
             throw new InvalidStateTransitionException("Rezervasyon zaten onaylanmış.");
+        if (Status == ReservationStatus.Cancelled)
+            throw new InvalidStateTransitionException("İptal edilmiş rezervasyon onaylanamaz.");
         if (Status == ReservationStatus.Expired || now >= ExpiresAt)
             throw new HoldExpiredException("Tutma süresi dolmuş.");
 
         Seat.ConfirmSale(Id);
         Status = ReservationStatus.Confirmed;
         ConfirmedAt = now;
+    }
+
+    /// <summary>
+    /// Tutmadan vazgeçer ve koltuğu hemen serbest bırakır. Durum makinesi: yalnızca <c>Held → Cancelled</c>.
+    /// Onaylanmış (satın alınmış) rezervasyon iptal edilemez: iade/ödeme akışı kapsam dışı olduğundan "Satıldı" son durumdur.
+    /// </summary>
+    public void Cancel(Guid userId, DateTimeOffset now)
+    {
+        // Sahiplik ilk sırada (Confirm ile aynı sebep): yabancıya rezervasyonun durumu sızmasın.
+        if (userId != UserId)
+            throw new NotHoldOwnerException("Bu rezervasyonu yalnızca tutan kullanıcı iptal edebilir.");
+        if (Status == ReservationStatus.Confirmed)
+            throw new InvalidStateTransitionException("Onaylanmış rezervasyon iptal edilemez.");
+        if (Status == ReservationStatus.Cancelled)
+            throw new InvalidStateTransitionException("Rezervasyon zaten iptal edilmiş.");
+        // Süresi dolmuş ama henüz taranmamış tutma da dolmuş sayılır (tembel süre dolumu, bkz. Seat.StatusAt).
+        if (Status == ReservationStatus.Expired || now >= ExpiresAt)
+            throw new HoldExpiredException("Tutma süresi zaten dolmuş.");
+
+        Seat.ReleaseHold(Id);
+        Status = ReservationStatus.Cancelled;
     }
 
     /// <summary>

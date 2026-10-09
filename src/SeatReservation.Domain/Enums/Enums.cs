@@ -12,6 +12,8 @@ public enum ReservationStatus
     Held = 0,
     Confirmed = 1,
     Expired = 2,
+    // Sona eklendi: Status veritabanında ad olarak (string) saklandığı için sayısal değer önemsiz, migration gerekmez.
+    Cancelled = 3,
 }
 
 public enum UserRole
