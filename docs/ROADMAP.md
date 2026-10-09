@@ -28,7 +28,7 @@ Temel soru: **iki kişi aynı koltuğu aynı anda almaya çalışırsa ne olur?*
 - [ ] Demo GIF'i — _proje sahibi çekecek (canlı demo veya `docker compose` ekranı)_
 - [x] README'de "Neden böyle tasarlandı?" bölümü
 - [x] Kod temizliği: arayüz lint uyarıları giderildi; eş zamanlı kayıt 500 → 409; demo ucuna hız sınırı (429)
-- [ ] CI'da SQL Server'a karşı koşan test işi (şimdilik testler SQLite'ta)
+- [x] CI'da SQL Server'a karşı koşan test işi — _`sqlserver` işi: eş zamanlılık testleri SQL Server 2022'ye karşı; yerelde SQL Server konteynerinde doğrulandı, GitHub'da henüz koşmadı_
 
 ## Bilinçli olarak yapılmayanlar
 Ödeme entegrasyonu, e-posta, mikroservis. Kapsam dışı, README'de "sonraki adımlar" olarak anılır.

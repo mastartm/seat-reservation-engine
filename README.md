@@ -30,7 +30,7 @@ kalanı `409 Conflict`, başka hiçbir cevap yok.
 Ölçüm koşulu (dürüst not): SQL Server 2022 konteyneri, API ve istemci betiği **aynı makinede**
 (Docker Desktop, Windows). Gecikmeler üretim ağını yansıtmaz, göreli okunmalıdır; doğruluk sonucu (tam 1 kazanan) ise
 makineden bağımsızdır. Yeniden üretmek için: `docker compose up -d --build` sonra `python -X utf8 scripts/concurrency_load_test.py`
-([betik](scripts/concurrency_load_test.py)). Otomatik testler (SQLite, CI'da her push'ta) ayrıca 100 paralel istekle 5 tur koşar.
+([betik](scripts/concurrency_load_test.py)). Otomatik testler ayrıca 100 paralel istekle 5 tur koşar: yerelde SQLite'ta, CI'daki `sqlserver` işinde gerçek SQL Server 2022'ye karşı.
 
 ## Neden böyle tasarlandı?
 
@@ -112,5 +112,5 @@ dotnet build
 dotnet test
 cd web && npm ci && npm test        # arayüz bileşen testleri (lint: npm run lint, derleme: npm run build)
 ```
-Testler Docker gerektirmez (entegrasyon testleri SQLite dosyası kullanır; sınırı `ARCHITECTURE.md` §3'te). Şu an: 25 domain + 56 entegrasyon + 35 arayüz testi.
+Testler Docker gerektirmez (entegrasyon testleri varsayılan olarak SQLite dosyası kullanır; `TEST_SQLSERVER_CONNECTION` verilirse gerçek SQL Server'a bağlanır, CI'daki `sqlserver` işi eş zamanlılık testlerini böyle koşar: `ARCHITECTURE.md` §3). Şu an: 25 domain + 56 entegrasyon + 35 arayüz testi.
 Gerçek SQL Server'a karşı eş zamanlılık ölçümü ayrıca [`scripts/concurrency_load_test.py`](scripts/concurrency_load_test.py) ile yapılır (sonuçlar yukarıda).

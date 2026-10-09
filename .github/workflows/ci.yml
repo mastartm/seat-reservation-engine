@@ -17,6 +17,43 @@ jobs:
       - run: dotnet build --no-restore -c Release
       - run: dotnet test --no-build -c Release
 
+  # Eş zamanlılık testlerini gerçek SQL Server 2022'ye karşı koşar (build-test işi SQLite kullanır).
+  # `rowversion` ve kilit davranışı yalnızca burada gerçek veritabanıyla sınanır.
+  sqlserver:
+    runs-on: ubuntu-latest
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          # GERÇEK BİR SIR DEĞİL: yalnızca bu işin ömrü boyunca yaşayan, dışarıdan erişilemeyen geçici
+          # service container için CI'a özel değer (SQL Server karmaşıklık kuralını sağlamak zorunda).
+          # Services bloğu `env` bağlamını okuyamadığı için aşağıdaki test bağlantı dizesinde de aynı değer var.
+          MSSQL_SA_PASSWORD: Ci-Only_Passw0rd!
+        ports:
+          - 1433:1433
+        # SQL Server açılması yarım dakikayı bulabilir; test adımı sağlıklı olana kadar başlamaz.
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$MSSQL_SA_PASSWORD\" -Q \"SELECT 1\" -b"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+          --health-start-period 20s
+    env:
+      # Doluysa ApiFactory SQLite yerine bu sunucuyu kullanır; her test kendi benzersiz adlı veritabanını açıp siler.
+      TEST_SQLSERVER_CONNECTION: Server=localhost,1433;User Id=sa;Password=Ci-Only_Passw0rd!;TrustServerCertificate=True
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet restore
+      - run: dotnet build --no-restore -c Release
+      # Yalnızca eş zamanlılık: ConcurrencyTests, paralel kayıt (AuthApiTests), onay/iptal ↔ süre dolumu yarışları.
+      - run: >-
+          dotnet test --no-build -c Release --filter
+          "FullyQualifiedName~ConcurrencyTests|FullyQualifiedName~Register_same_email_in_parallel|FullyQualifiedName~_racing_with_sweep"
+
   web:
     runs-on: ubuntu-latest
     defaults:

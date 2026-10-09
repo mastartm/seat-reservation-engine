@@ -20,9 +20,12 @@ istekleri; her turda tam 1 `201`, 99 `409`, veritabanında tam 1 rezervasyon; 5 
 kapatınca testlerin kırıldığını da denedim (1 yerine 3–4 "kazanan" çıktı), yani test gerçekten race yakalıyor.
 
 **4. Testlerin SQLite'ta çalışması bir zayıflık değil mi?**
-Kısmen evet, ve bunu dokümanda açıkça yazdım. SQLite `rowversion` üretmez; test bağlamı değeri kendisi yeniler. EF'in
-ürettiği `UPDATE ... WHERE` ve istisna mekanizması aynıdır, ama SQL Server'ın kendi davranışı kanıtlanmış olmaz.
-Çözüm: CI'da SQL Server servis konteynerine karşı koşan bir iş (Aşama 3 adayı).
+Yerel `dotnet test` için evet, bir ödünle: Docker şart koşmasın diye SQLite kullanıyor. SQLite `rowversion` üretmez; test
+bağlamı değeri kendisi yeniler. EF'in ürettiği `UPDATE ... WHERE` ve istisna mekanizması aynıdır, ama SQL Server'ın kendi
+davranışı kanıtlanmış olmaz. Bu yüzden CI'da ayrı bir `sqlserver` işi var: `TEST_SQLSERVER_CONNECTION` doluysa aynı
+`ApiFactory` gerçek SQL Server 2022'ye bağlanır (her test kendi benzersiz adlı veritabanında, şema `EnsureCreated` değil
+migration'larla kurulur) ve eş zamanlılık testleri oraya karşı koşar. Dürüst sınır: bu alt küme CI'da SQL Server'da
+koşar; geri kalan testler SQLite'ta. (ARCHITECTURE §3)
 
 **5. Kaybeden isteği neden yeniden denemiyorsun?**
 Doğru cevap "bu koltuk artık müsait değil"dir; yeniden denemek aynı sonucu verirdi. Retry, çakışmanın "başka birinin
@@ -156,7 +159,7 @@ SQL Server + tarayıcıyla iki bağlamlı elle doğrulama yaptım ama bu otomati
 
 ## Bilinen eksikler (sorulursa dürüst cevap)
 
-* Testler SQL Server yerine SQLite'ta koşar (soru 4).
+* Eş zamanlılık dışındaki testler ve yerel `dotnet test` SQLite'ta koşar; SQL Server'a karşı yalnızca eş zamanlılık alt kümesi CI'da koşar (soru 4).
 * Kullanıcı başına hold limiti yok.
 * Arayüz için otomatik E2E testi yok (yalnızca elle doğrulandı); demo hız sınırı genel (istemci başına değil).
 * Kullanıcı tutmasından vazgeçemez (iptal ucu yok); koltuk süre dolunca boşalır.

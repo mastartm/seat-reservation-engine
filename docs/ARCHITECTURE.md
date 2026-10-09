@@ -77,12 +77,30 @@ aynı anda salınan 100 istek, 5 tur, her turda tam 1 `201` ve 99 `409`; ayrıca
 kullanıcının çift tıklaması ve paralel onay. `RowVersion` koruması geçici olarak kapatıldığında bu testlerin
 kırıldığı elle doğrulandı (yani testler gerçekten race yakalıyor).
 
-### Dürüst sınır: testler SQLite üzerinde koşar
-Testler Docker/SQL Server gerektirmesin diye SQLite dosyası kullanır. SQLite `rowversion` üretmediği için
+### İki veritabanı, tek test paketi (SQLite yerelde, SQL Server CI'da)
+Varsayılan olarak testler Docker/SQL Server gerektirmesin diye SQLite dosyası kullanır. SQLite `rowversion` üretmediği için
 test bağlamı (`SqliteAppDbContext`) değeri `SaveChanges` öncesinde kendisi yeniler. **EF'in ürettiği
 `UPDATE ... WHERE RowVersion = ...` ve `DbUpdateConcurrencyException` mekanizması aynıdır**, ama SQL Server'ın
-kendi `rowversion` ve kilit davranışı bu testlerde çalışmaz. Aşama 3'te SQL Server konteynerine karşı koşan bir
-CI işi eklenmesi planlanıyor (bkz. "Bilinen sınırlar").
+kendi `rowversion` ve kilit davranışı bu yolda çalışmaz.
+
+Bu boşluğu kapatmak için `TEST_SQLSERVER_CONNECTION` ortam değişkeni doluysa `ApiFactory` SQLite yerine gerçek SQL Server'a bağlanır
+(CI'daki `sqlserver` işi: `mcr.microsoft.com/mssql/server:2022-latest` service container; yalnızca eş zamanlılık testleri,
+`--filter` ile). Boşsa yerel `dotnet test` Docker istemeden SQLite'ta koşar.
+
+* **Yalın tutuldu:** SQL Server yolunda `DbContext` kaydına dokunulmaz; üretimdeki `AddInfrastructure` (`UseSqlServer`,
+  gerçek `rowversion`) yalnızca bağlantı dizesi değiştirilerek kullanılır. `SqliteAppDbContext`'in RowVersion yaması bu yolda uygulanmaz.
+* **Her `ApiFactory` kendi veritabanını açar** (`seats_test_<guid>`) ve Dispose'ta `DROP DATABASE` ile siler; paralel koşan testler
+  birbirinin verisini görmez, sunucuda artık kalmaz.
+* **`EnsureCreated` değil `Migrate`:** `EnsureCreated` şemayı *modelden* kurar; migration'ları hiç çalıştırmaz. Üretimde (compose,
+  `Database__MigrateOnStartup`) ise şemayı *migration'lar* kurar. İkisi ayrışırsa (migration üretilmedi, `rowversion` kolonu
+  eksik...) `EnsureCreated` ile testler yeşil kalır ama gerçek şema bozuktur. `Migrate` üretim yolunun kendisini sınar. Bedeli:
+  factory başına ~1 sn migration süresi; yalnızca SQL Server yolunda ödenir. SQLite yolunda `EnsureCreated` kalır çünkü
+  migration'lar SQL Server'a özgüdür (`rowversion`, `datetimeoffset`).
+* **Parola:** CI'daki SA parolası workflow dosyasında düz yazılıdır; GitHub secret değildir çünkü gerçek bir sır değildir:
+  yalnızca işin ömrü boyunca yaşayan, dışarıdan erişilemeyen bir konteynerin geçici değeridir (workflow'da yorumla belirtildi).
+* **Hâlâ SQLite'ta koşan:** diğer testlerin tamamı (`build-test` işi). Tüm paketin SQL Server'a karşı da geçtiği yerelde
+  elle doğrulandı, ama CI'da yalnızca eş zamanlılık alt kümesi koşar: yavaş olmasın, ve SQL Server'a özgü davranışın
+  asıl önemli olduğu yerler bunlar.
 
 ## 4. Kimlik doğrulama
 
@@ -143,7 +161,7 @@ Aşama 2'de backend'e yeni paket eklenmedi (CORS ve seçenek bağlama framework'
 
 **Eklenmeyenler:** ASP.NET Identity (parola özetleme + JWT için fazla), MediatR (use-case sayısı az; düz servis
 sınıfı yeterli), AutoMapper (birkaç `record` eşlemesi elle), FluentValidation (DataAnnotations + domain kuralları yeterli),
-Testcontainers (CI'da Docker şart koşardı; bkz. sınırlar).
+Testcontainers (yerel `dotnet test` Docker şart koşardı; SQL Server'ı CI'da GitHub Actions `services:` ile veriyoruz, §3).
 
 ## 9. Yapılandırma ve sırlar
 
@@ -167,7 +185,7 @@ için yalnızca Development'ta açılırdı. HTTPS yönlendirmesi yok: TLS'i API
 
 ## 10. Bilinen sınırlar (Aşama 3 adayları)
 
-* Testler SQLite üzerinde; SQL Server konteynerine karşı koşan CI işi yok.
+* Eş zamanlılık dışındaki testler (ve yerel `dotnet test`) SQLite üzerinde; SQL Server'a karşı yalnızca eş zamanlılık alt kümesi CI'da koşar (§3).
 * Hold sayısı kullanıcı başına sınırlı değil (bir kullanıcı tüm koltukları tutabilir).
 * Refresh token, parola sıfırlama, e-posta doğrulama yok (kapsam dışı).
 * `docker compose up --build` bu geliştirme ortamında uçtan uca çalıştırılamadı: sandbox'ın ağı, imaj derlemesi
