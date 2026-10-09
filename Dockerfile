@@ -6,6 +6,7 @@ COPY src/SeatReservation.Application/*.csproj src/SeatReservation.Application/
 COPY src/SeatReservation.Infrastructure/*.csproj src/SeatReservation.Infrastructure/
 COPY src/SeatReservation.Api/*.csproj src/SeatReservation.Api/
 COPY tests/SeatReservation.Domain.Tests/*.csproj tests/SeatReservation.Domain.Tests/
+COPY tests/SeatReservation.Api.Tests/*.csproj tests/SeatReservation.Api.Tests/
 RUN dotnet restore
 COPY . .
 RUN dotnet publish src/SeatReservation.Api -c Release -o /app --no-restore
