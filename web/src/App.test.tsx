@@ -68,4 +68,21 @@ describe('koltuk tutma ve onaylama akışı', () => {
     await user.click(within(header).getByRole('button', { name: 'Çıkış' }))
     expect(within(header).getByRole('button', { name: 'Giriş / Kayıt' })).toBeInTheDocument()
   })
+
+  it('Rezervasyonlarım ekranı satın alınan koltuğu gösterir', async () => {
+    signIn()
+    installFakeApi()
+    render(<App />)
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: 'B1, boş' }))
+    await user.click(await screen.findByRole('button', { name: 'B1 için satın almayı onayla' }))
+    await screen.findByRole('button', { name: 'B1, senin koltuğun' })
+
+    await user.click(screen.getByRole('button', { name: /Rezervasyonlarım/ }))
+
+    const list = await screen.findByRole('list')
+    expect(within(list).getByText('Satın alındı')).toBeInTheDocument()
+    expect(within(list).getByText(/B1/)).toBeInTheDocument()
+  })
 })

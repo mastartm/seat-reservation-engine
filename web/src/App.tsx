@@ -5,9 +5,10 @@ import { AuthProvider, useAuth } from './auth/AuthContext'
 import { AuthForm } from './components/AuthForm'
 import { activeReservationsBySeat } from './lib/seatState'
 import { usePolled } from './lib/usePolled'
+import { MyReservationsPage } from './pages/MyReservationsPage'
 import { SeatsPage } from './pages/SeatsPage'
 
-type View = 'seats' | 'auth'
+type View = 'seats' | 'mine' | 'auth'
 
 const MINE_POLL_MS = 5000
 
@@ -44,8 +45,21 @@ function Shell() {
         <nav className="flex items-center gap-3 text-sm">
           {session ? (
             <>
-              <span className="hidden text-slate-600 sm:inline">{session.email}</span>
-              <button type="button" onClick={logout} className="rounded-lg border border-slate-300 px-3 py-1.5 hover:bg-slate-100">
+              <button
+                type="button"
+                onClick={() => setView('mine')}
+                aria-current={view === 'mine' ? 'page' : undefined}
+                className={`rounded-lg px-3 py-1.5 hover:bg-slate-100 ${view === 'mine' ? 'font-semibold text-indigo-700' : ''}`}
+              >
+                Rezervasyonlarım
+                {holds.length > 0 && (
+                  <span className="ml-1.5 rounded-full bg-indigo-600 px-1.5 py-0.5 text-[10px] font-bold text-white" aria-label={`${holds.length} aktif tutma`}>
+                    {holds.length}
+                  </span>
+                )}
+              </button>
+              <span className="hidden text-slate-600 md:inline">{session.email}</span>
+              <button type="button" onClick={() => { logout(); setView('seats') }} className="rounded-lg border border-slate-300 px-3 py-1.5 hover:bg-slate-100">
                 Çıkış
               </button>
             </>
@@ -72,6 +86,14 @@ function Shell() {
             <h1 className="mb-4 text-xl font-semibold">Hesabınla devam et</h1>
             <AuthForm onDone={() => setView('seats')} />
           </div>
+        ) : view === 'mine' && session ? (
+          <MyReservationsPage
+            reservations={reservations.data}
+            error={reservations.error}
+            events={events}
+            onChanged={reloadMine}
+            onBrowse={() => setView('seats')}
+          />
         ) : (
           <SeatsPage
             events={events}
