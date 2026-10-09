@@ -1,6 +1,6 @@
 # Mimari ve Kararlar
 
-> Sürüm: Aşama 1 (backend çekirdeği). Her karar "ne" değil **"neden"** ile yazıldı.
+> Sürüm: Aşama 2 (arayüz eklendi; backend çekirdeği Aşama 1). Her karar "ne" değil **"neden"** ile yazıldı.
 
 ## 1. Katmanlar
 
@@ -139,6 +139,8 @@ Bir tur başarısız olursa (ör. onayla yarıştı) servis ölmez, loglayıp so
 | `Microsoft.AspNetCore.Mvc.Testing` | Test | Gerçek HTTP hattını bellekte ayağa kaldırır |
 | `Microsoft.EntityFrameworkCore.Sqlite` | Test | Docker'sız, dosya tabanlı gerçek veritabanı |
 
+Aşama 2'de backend'e yeni paket eklenmedi (CORS ve seçenek bağlama framework'ün parçası). Arayüz paketleri §11.1'de.
+
 **Eklenmeyenler:** ASP.NET Identity (parola özetleme + JWT için fazla), MediatR (use-case sayısı az; düz servis
 sınıfı yeterli), AutoMapper (birkaç `record` eşlemesi elle), FluentValidation (DataAnnotations + domain kuralları yeterli),
 Testcontainers (CI'da Docker şart koşardı; bkz. sınırlar).
@@ -154,6 +156,8 @@ eksikse `${VAR:?}` ile açıklayıcı hatayla durur.
 | `Jwt__Key` | JWT imzalama anahtarı (≥ 32 karakter, zorunlu) |
 | `Database__MigrateOnStartup` | `true` ise açılışta migration (compose'ta açık) |
 | `Admin__Email`, `Admin__Password` | Verilirse ilk Admin kullanıcıyı oluşturur |
+| `Demo__Enabled` | `true` ise açılışta (etkinlik yoksa) örnek veri tohumlanır ve `POST /api/auth/demo` açılır (§11.8) |
+| `Cors__AllowedOrigins` | Arayüzün adresi (virgülle ayrılmış). Boşsa CORS kapalı (§11.7) |
 | `Reservation__HoldDuration` | Tutma süresi (varsayılan `00:10:00`) |
 | `Reservation__ExpirySweepInterval` | Süre dolum taraması sıklığı (varsayılan `00:00:30`) |
 
@@ -167,6 +171,91 @@ için yalnızca Development'ta açılırdı. HTTPS yönlendirmesi yok: TLS'i API
   yarışı); 409'a çevrilmesi gerek.
 * Hold sayısı kullanıcı başına sınırlı değil (bir kullanıcı tüm koltukları tutabilir).
 * Refresh token, parola sıfırlama, e-posta doğrulama yok (kapsam dışı).
-* `docker compose up` akışı bu geliştirme ortamında (Docker daemon yok) uçtan uca çalıştırılamadı; compose
-  yapılandırması `docker compose config` ile, API ise yayımlanmış çıktıyla (başlangıç, `/health`, Swagger,
-  eksik `Jwt__Key` hatası) elle doğrulandı.
+* `docker compose up --build` bu geliştirme ortamında uçtan uca çalıştırılamadı: sandbox'ın ağı, imaj derlemesi
+  sırasında konteynerin NuGet'e erişmesine izin vermedi. Bunun yerine parçalar ayrı ayrı gerçek bileşenlerle doğrulandı:
+  gerçek SQL Server 2022 konteyneri + API (migration, demo tohumu, hold/onay), gerçek `nginx:1.27` + `web/nginx.conf`
+  (index, `/api` ve `/health` yönlendirmesi, önbellek başlıkları) ve Chromium ile tarayıcı akışı (§11.9).
+* Arayüz için SQL Server'a karşı koşan otomatik uçtan uca (E2E) test CI'da yok; yalnızca elle çalıştırıldı (§11.9).
+* Demo uçu (`POST /api/auth/demo`) hız sınırsızdır; biri döngüyle çağırırsa veritabanı misafir kullanıcıyla dolar (§11.8).
+* Kullanıcı tutmasından vazgeçemez (iptal/serbest bırakma ucu yok); koltuk süre dolunca kendiliğinden boşalır.
+
+## 11. Arayüz (`web/`)
+
+React 19 + TypeScript + Vite + Tailwind CSS v4. Tek sayfa; sunucu tarafı render yok (SEO gerekmiyor, vitrin uygulaması).
+
+### 11.1 Yığın ve eklenmeyenler
+| Paket | Neden |
+|---|---|
+| `react`, `react-dom`, `vite`, `typescript` | İstenen yığın |
+| `tailwindcss`, `@tailwindcss/vite` | Stil; ayrı CSS dosyası/bileşen kütüphanesi gerektirmez, build'de kullanılmayan sınıflar atılır |
+| `vitest`, `jsdom`, `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom` | Bileşen testleri. Vitest, Vite'ın kendi dönüştürücüsünü kullanır (ayrı Jest/Babel kurulumu yok) |
+| `oxlint` | Vite şablonuyla geldi; hızlı, sıfır ayar |
+
+**Eklenmeyenler:** React Router (yalnızca 3 görünüm var: `useState` yeterli, URL paylaşımı gereksinim değil),
+React Query/SWR (tek bir 20 satırlık `usePolled` kancası ihtiyacı karşılıyor), Redux/Zustand (paylaşılan tek durum oturum:
+Context), bileşen kütüphanesi (MUI vb.; vitrin olarak Tailwind ile elle yazılmış bileşenler daha okunur ve hafif),
+axios (`fetch` + 60 satırlık istemci).
+
+### 11.2 Anlık güncelleme: polling (SignalR değil)
+`usePolled` koltuk haritasını 3 sn'de, rezervasyonlarımı 5 sn'de bir yeniler; sekme görünmezken durur, geri gelince hemen yeniler.
+* **Neden polling:** akış tek yönlü ve saniyeler mertebesinde tazelik yeterli. SignalR ek sunucu bileşeni, bağlantı/yeniden
+  bağlanma yönetimi ve ölçeklendiğinde backplane (Redis) gerektirir; polling'de API durumsuz kalır.
+* **Doğruluk polling'e bağlı değil:** harita bayat olsa bile kaybedilen yarışı sunucu 409 ile çözer (§3). Polling yalnızca
+  kullanıcıya "o koltuk gitti"yi erken göstermek içindir.
+* **Bayat yanıt koruması:** yavaş dönen eski bir yanıt yeni yanıtın üstüne yazmasın diye her istek bir sıra numarası taşır;
+  `load` değişince (başka etkinlik, başka kullanıcı) eski veri hiç gösterilmez.
+* **Maliyeti:** N açık sekme ≈ N/3 istek/sn. Gerçek ölçekte `ETag`/`If-None-Match` veya SignalR düşünülür (bkz. `INTERVIEW.md`).
+
+### 11.3 Geri sayım ve sunucu saati
+Kalan süre = sunucunun verdiği `expiresAt` − "sunucu şimdisi". Kullanıcının saati yanlışsa (saat farkı, manuel ayar) 10 dakikalık
+gösterge de yanlış olurdu, bu yüzden her yanıttaki `Date` başlığından sunucu–istemci farkı ölçülür (`lib/clock.ts`).
+* `Date` saniyeyi aşağı yuvarlar; ortası (+500 ms) alınır → gösterge hatası ≤ ±0,5 sn.
+* Başlığın çapraz-origin'de okunabilmesi için CORS politikası `Date`'i `Access-Control-Expose-Headers` ile açar (test: `CorsTests`).
+* **Geri sayım bir ipucudur, yetki değil:** süre dolumunu ve onay reddini sunucu uygular (süresi dolan onay → 409).
+  Sayaç 00:00'a varınca düğme kalkar ve kart "süre doldu" der; sunucu hâlâ "Held" dese de (arka plan servisi 30 sn'de bir çalışır)
+  arayüz gerçek durumu gösterir.
+
+### 11.4 "Benim koltuğum" nasıl bilinir?
+`GET /events/{id}/seats` yalnızca `Available/Held/Sold` döner: **kimin tuttuğunu söylemez** (başkalarının bilgisi sızmasın).
+Arayüz "senin tuttuğun/satın aldığın" ayrımını `GET /reservations/mine` ile koltuk kimliğini eşleştirerek türetir
+(`lib/seatState.ts`). Haritada koltuk "Held" ve benim aktif rezervasyonum varsa → "senin için tutuldu"; yoksa → "başkası tutuyor".
+
+### 11.5 Tutma akışı: tıkla → hemen tut
+Koltuğa tıklamak onu **hemen** tutar; "seç, sonra tut" iki adımı yok. Seçimin yerelde tutulup sonra tutulması, kullanıcıyı
+kaybedeceği bir yarışa sokar (seçilen koltuk arada alınır). Hemen tutmak yarışı en kısa pencereye indirir; kaybeden 409'un
+mesajını görür, harita yenilenir. İstek sürerken diğer koltuklar kilitlenir (çift tıklama koruması).
+Giriş yapılmadan tıklama istek atmaz, giriş ekranına yönlendirir.
+
+### 11.6 Oturum
+JWT ve kullanıcı bilgisi `localStorage`'da tutulur; sunucu 401 dönerse (token reddedildi) oturum otomatik kapanır. Giriş denemesindeki
+401 "parola yanlış" demektir ve oturumu kapatmaz.
+* **Güvenlik takası:** `localStorage` XSS ile okunabilir; `HttpOnly` çerez bunu önlerdi ama CSRF koruması, çerez/CORS ayarı ve
+  (Render/Vercel gibi) farklı alan adlarında `SameSite` sorunları getirir. Bu projede kullanıcı girdisi React tarafından
+  kaçışlanır (`dangerouslySetInnerHTML` yok) ve token'ın ömrü kısa; yine de bu bilinçli bir takastır (bkz. `INTERVIEW.md`).
+* `localStorage` erişimi (gizli pencere vb.) hata verirse oturum yalnızca bellekte yaşar; uygulama çalışmaya devam eder.
+
+### 11.7 Geliştirme ve canlıda API adresi
+* **Geliştirme:** Vite dev sunucusu `/api` ve `/health`'i `http://localhost:8080`'e yönlendirir → tarayıcı için aynı origin, CORS yok.
+* **`docker compose`:** `web` servisi (nginx) statik dosyaları sunar ve `/api`'yi API konteynerine iletir → yine aynı origin.
+* **Canlı (ayrı alan adları):** arayüz `VITE_API_URL` ile API'yi doğrudan çağırır; API `Cors__AllowedOrigins` ile o adresi tanır.
+  CORS yalnızca bu ayar doluysa açılır (varsayılan kapalı = güvenli taraf). `AllowCredentials` yok: kimlik çerezle değil
+  `Authorization` başlığıyla taşınır. `VITE_API_URL` derleme anında gömülür (docs/DEPLOY.md).
+
+### 11.8 Demo modu
+Ziyaretçi 2 dakikada deneyebilsin diye (`Demo__Enabled=true`):
+* **Tohum:** hiç etkinlik yokken 2 örnek etkinlik oluşur; koltukların ~%25'i "satılmış" gelir (sabit tohumla, tekrarlanabilir).
+  Tohum veri de gerçek domain yolundan (`Hold` → `Confirm`) geçer: durum makinesinin kurallarına uyar. Yeniden başlatmada çoğalmaz.
+* **Tek tıkla giriş = tek kullanımlık misafir hesabı** (`POST /api/auth/demo`), sabit "demo/demo" kullanıcısı değil. Sabit kimlik
+  repoda herkesin bildiği bir parola olurdu (CLAUDE.md: parola commit'lenmez) ve ziyaretçiler birbirinin rezervasyonlarını görürdü.
+  Misafirin parola özeti kimsenin bilmediği rastgele bir değerdir: bu hesaba parolayla girilemez, yalnızca yanıttaki token çalışır.
+* **Bilinen risk:** hız sınırı yok; kötüye kullanım veritabanını şişirir. Demo için kabul edildi, `DEPLOY.md`'de uyarıldı.
+
+### 11.9 Test stratejisi (frontend)
+* **Bileşen/akış testleri (35, CI'da):** `SeatMap` (durumlar, sıralama, tıklanabilirlik), `AuthForm` (başarı/hata/ağ hatası/demo),
+  `HoldCard` (geri sayım, uyarı rengi, süre dolumu, **yanlış istemci saati**), `MyReservationsPage` (durumlar, sıralama,
+  süresi geçmiş-ama-"Held" kayıt), `App` (giriş→tut→onayla→Rezervasyonlarım akışı, 409, demo girişi), `formatRemaining`.
+* **Sahte sunucu:** `test/fakeApi.ts` durumlu bir `fetch` sahtesidir; hold/confirm gerçekten koltuk durumunu değiştirir. Testler
+  tek tek istekleri değil, kullanıcının gördüğü akışı doğrular. Sahte zamanlayıcıyla 10 dakika beklenmez.
+* **Elle doğrulama (CI'da değil):** gerçek SQL Server + API + Vite + Chromium ile iki ayrı tarayıcı bağlamı: A koltuğu tutar
+  (geri sayım işler), B aynı koltuğu ≤ 3 sn'de "başkası tutuyor" görür, A onaylar, B "satıldı" görür.
+  Bu bir otomatik E2E değildir; Aşama 3 adayı.

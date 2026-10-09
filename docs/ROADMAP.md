@@ -16,11 +16,11 @@ Temel soru: **iki kişi aynı koltuğu aynı anda almaya çalışırsa ne olur?*
 - [x] `docs/ARCHITECTURE.md` ve `docs/INTERVIEW.md` ilk sürüm
 
 ## Aşama 2 — Arayüz ve canlı demo
-- [ ] React + Vite + Tailwind, `web/` klasöründe
-- [ ] Koltuk haritası, anlık durum güncellemesi (polling veya SignalR)
-- [ ] Giriş ekranı, "Rezervasyonlarım"
-- [ ] Demo için örnek veri (seed) ve tek tıkla demo girişi
-- [ ] Canlı deploy (ücretsiz katman) ve README'ye link
+- [x] React + Vite + Tailwind, `web/` klasöründe — _35 bileşen/akış testi, CI'da `web` işi (lint + test + build)_
+- [x] Koltuk haritası, anlık durum güncellemesi (polling, 3 sn) — _hold/onay + 10 dk geri sayım dahil_
+- [x] Giriş ekranı, "Rezervasyonlarım"
+- [x] Demo için örnek veri (seed) ve tek tıkla demo girişi — _`Demo__Enabled=true`; gerçek SQL Server'da doğrulandı_
+- [ ] Canlı deploy (ücretsiz katman) ve README'ye link — _hazırlık tamam (`docs/DEPLOY.md`, `web/Dockerfile`, CORS); hesap/anahtar adımları proje sahibinde_
 
 ## Aşama 3 — Cila
 - [ ] Yük/eş zamanlılık testi sonuçları README'de (tablo)
