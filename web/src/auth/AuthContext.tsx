@@ -1,19 +1,9 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api, setAuthToken, setUnauthorizedHandler } from '../api/client'
 import type { AuthResult } from '../api/types'
+import { AuthContext, type AuthState } from './authState'
 
 const STORAGE_KEY = 'seat-reservation.session'
-
-interface AuthState {
-  session: AuthResult | null
-  login: (email: string, password: string) => Promise<void>
-  register: (email: string, password: string) => Promise<void>
-  /** Tek tıkla misafir hesabı (sunucuda Demo modu açıksa). */
-  demoLogin: () => Promise<void>
-  logout: () => void
-}
-
-const AuthContext = createContext<AuthState | null>(null)
 
 // localStorage erişimi gizli pencerede / engelli sitelerde hata verebilir; oturum o zaman yalnızca bellekte yaşar.
 function loadSession(): AuthResult | null {
@@ -70,10 +60,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
-
-export function useAuth(): AuthState {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth, AuthProvider içinde kullanılmalı.')
-  return ctx
 }

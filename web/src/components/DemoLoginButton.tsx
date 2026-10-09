@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ApiError } from '../api/client'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../auth/authState'
 
 interface Props {
   onDone?: () => void
