@@ -25,10 +25,11 @@ Domain'de. Controller'da tek satır iş mantığı yok: kimlik al → servisi ç
 Event 1───* Seat 1───* Reservation *───1 User
 ```
 
-* **Seat** koltuğun durum makinesidir: `Available → Held → Sold`, `Held → Available` (süre dolumu).
+* **Seat** koltuğun durum makinesidir: `Available → Held → Sold`, `Held → Available` (süre dolumu veya vazgeçme).
   Geçişlerin tamamı `Seat` üzerinden geçer; dışarıdan `Status` set edilemez (`private set`).
-* **Reservation** bir tutma/satın alma kaydıdır: `Held → Confirmed` veya `Held → Expired`.
-  "Kim onaylayabilir, süre dolmuş mu" kuralları `Reservation.Confirm` içindedir.
+* **Reservation** bir tutma/satın alma kaydıdır: `Held → Confirmed`, `Held → Expired` veya `Held → Cancelled`.
+  "Kim onaylayabilir/iptal edebilir, süre dolmuş mu" kuralları `Reservation.Confirm` ve `Reservation.Cancel` içindedir.
+  `Confirmed`, `Expired` ve `Cancelled` son durumlardır.
 * `Seat.ActiveReservationId` koltuğu şu an hangi rezervasyonun tuttuğunu söyler.
 
 ### Neden `ActiveReservationId`?
@@ -70,6 +71,28 @@ yalnızca aynı hatayı üretirdi.
 **Onay ↔ süre dolumu yarışı:** `Confirm` ve `HoldExpirationService` aynı `Seat` satırını günceller; aynı
 `RowVersion` mekanizması biri geçirir diğerini reddeder. Onaylanmış koltuk yanlışlıkla serbest kalamaz
 (test: `Confirm_racing_with_sweep_cannot_both_win`).
+
+### Vazgeçme (iptal)
+`POST /api/reservations/{id}/cancel`: tutma sahibi `Held → Cancelled` yapar, koltuk hemen `Available` olur (süre dolmasını beklemez).
+* **Kural domain'de:** `Reservation.Cancel(userId, now)`. Sıra `Confirm` ile aynı: önce sahiplik (403, yabancıya durum sızmaz), sonra
+  onaylanmış → 409 (`InvalidStateTransitionException`), zaten iptal → 409, süre dolmuş → 409 (`HoldExpiredException`). Olmayan kayıt 404.
+  Controller tek satır; yeni istisna tipi gerekmedi, `ApiExceptionHandler` tablosu aynı kaldı.
+* **Neden `DELETE` değil `POST .../cancel`?** Rezervasyon silinmez: `Cancelled` durumunda kalır ve "Rezervasyonlarım"da geçmiş olarak görünür,
+  yani istek bir *durum geçişi*dir, kaynağın kaldırılması değil. `confirm` ile de aynı kalıp (fiil alt kaynağı) ve `DELETE`'in
+  idempotent olması beklenir, oysa ikinci iptal bilerek 409 verir (durum makinesi: `Cancelled` son durum). Bedeli: REST saflığı;
+  kazancı: ad niyeti açıkça söyler, tutarlıdır.
+* **Neden onaylanmış rezervasyon iptal edilemez?** Ödeme/iade akışı kapsam dışı; "Satıldı" son durumdur. İptal/iade eklenirse bu
+  yeni bir geçiş (`Confirmed → Refunded`) ve ayrı bir yetki sorusu olurdu, `Cancel`'in gevşetilmesi değil.
+* **Yeni `Cancelled` durumu, migration yok:** `Status` veritabanında metin (`nvarchar(20)`) olarak saklanır, `"Cancelled"` sığar; şema değişmedi.
+  Enum'a sona eklendi.
+* **Eş zamanlılık:** iptal de `Seat` satırını günceller (koltuğu bırakır), yani onay ve süre dolumuyla aynı `RowVersion` korumasını kullanır.
+  İki iptal (çift tıklama), iptal ↔ onay ve iptal ↔ süre dolumu yarışında tam biri geçer, diğeri 409 alır; "Confirmed + Available" gibi
+  çelişkili durum oluşamaz. Testler: `Parallel_cancels_of_same_reservation_...` (20 paralel istek → 1 adet 200, 19 adet 409),
+  `Cancel_racing_with_confirm_...` (15 çift, gerçek paralel; her çiftte tam bir kazanan ve tutarlı veritabanı durumu),
+  `Cancel_racing_with_sweep_cannot_both_win`. Üçüncüsü bilerek *deterministik sıralamalıdır*: aynı saatte iptal "süre dolmadı",
+  tarama "doldu" ister, yani ikisi aynı anda ancak saat okuma ile yazma arasında ilerlerse çakışabilir; bu aralığı zamanlamaya
+  bırakmak yerine araya giren yazma elle sıralanır (`Confirm_racing_with_sweep_cannot_both_win` ile aynı yöntem). `RowVersion` koruması
+  kapatılınca üç test de kırılır (elle denendi).
 
 ### Kanıt: testler
 `ConcurrencyTests`: gerçek HTTP hattı + gerçek EF Core + gerçek veritabanı, `TaskCompletionSource` kapısıyla
@@ -193,7 +216,6 @@ için yalnızca Development'ta açılırdı. HTTPS yönlendirmesi yok: TLS'i API
   gerçek SQL Server 2022 konteyneri + API (migration, demo tohumu, hold/onay), gerçek `nginx:1.27` + `web/nginx.conf`
   (index, `/api` ve `/health` yönlendirmesi, önbellek başlıkları) ve Chromium ile tarayıcı akışı (§11.9).
 * Arayüz için SQL Server'a karşı koşan otomatik uçtan uca (E2E) test CI'da yok; yalnızca elle çalıştırıldı (§11.9).
-* Kullanıcı tutmasından vazgeçemez (iptal/serbest bırakma ucu yok); koltuk süre dolunca kendiliğinden boşalır.
 * Demo hız sınırı **genel**dir (tüm istemciler toplamı), istemci başına değil: proxy arkasında gerçek IP'ye güvenmek
   `ForwardedHeaders` ve güvenilen proxy yapılandırması gerektirir; bu vitrin için gereksiz karmaşıklık sayıldı.
 
@@ -281,10 +303,10 @@ Ziyaretçi 2 dakikada deneyebilsin diye (`Demo__Enabled=true`):
   genel bir sınırdır, istemci başına değil (§10); yine de veritabanı yavaşça dolabilir, `DEPLOY.md`'de uyarıldı.
 
 ### 11.9 Test stratejisi (frontend)
-* **Bileşen/akış testleri (35, CI'da):** `SeatMap` (durumlar, sıralama, tıklanabilirlik), `AuthForm` (başarı/hata/ağ hatası/demo),
-  `HoldCard` (geri sayım, uyarı rengi, süre dolumu, **yanlış istemci saati**), `MyReservationsPage` (durumlar, sıralama,
-  süresi geçmiş-ama-"Held" kayıt), `App` (giriş→tut→onayla→Rezervasyonlarım akışı, 409, demo girişi), `formatRemaining`.
-* **Sahte sunucu:** `test/fakeApi.ts` durumlu bir `fetch` sahtesidir; hold/confirm gerçekten koltuk durumunu değiştirir. Testler
+* **Bileşen/akış testleri (40, CI'da):** `SeatMap` (durumlar, sıralama, tıklanabilirlik), `AuthForm` (başarı/hata/ağ hatası/demo),
+  `HoldCard` (geri sayım, uyarı rengi, süre dolumu, **yanlış istemci saati**, "Vazgeç" başarı/409), `MyReservationsPage` (durumlar, sıralama,
+  süresi geçmiş-ama-"Held" kayıt), `App` (giriş→tut→onayla→Rezervasyonlarım akışı, tut→vazgeç, 409, demo girişi), `formatRemaining`.
+* **Sahte sunucu:** `test/fakeApi.ts` durumlu bir `fetch` sahtesidir; hold/confirm/cancel gerçekten koltuk durumunu değiştirir. Testler
   tek tek istekleri değil, kullanıcının gördüğü akışı doğrular. Sahte zamanlayıcıyla 10 dakika beklenmez.
 * **Elle doğrulama (CI'da değil):** gerçek SQL Server + API + Vite + Chromium ile iki ayrı tarayıcı bağlamı: A koltuğu tutar
   (geri sayım işler), B aynı koltuğu ≤ 3 sn'de "başkası tutuyor" görür, A onaylar, B "satıldı" görür.

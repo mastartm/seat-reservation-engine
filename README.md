@@ -104,6 +104,7 @@ cd web && npm ci && npm run dev      # http://localhost:5173, /api isteklerini l
 | `GET /api/events`, `GET /api/events/{id}/seats` | herkes | Etkinlikler, koltuk haritası |
 | `POST /api/seats/{id}/hold` | giriş yapmış | Koltuğu 10 dk tutar (başkasındaysa 409) |
 | `POST /api/reservations/{id}/confirm` | hold sahibi | Satın almayı onaylar |
+| `POST /api/reservations/{id}/cancel` | hold sahibi | Tutmadan vazgeçer, koltuk hemen boşalır (başkasıysa 403, olmayan 404, onaylanmış/süresi dolmuş/zaten iptal 409) |
 | `GET /api/reservations/mine` | giriş yapmış | Rezervasyonlarım |
 
 ## Test
@@ -112,5 +113,5 @@ dotnet build
 dotnet test
 cd web && npm ci && npm test        # arayüz bileşen testleri (lint: npm run lint, derleme: npm run build)
 ```
-Testler Docker gerektirmez (entegrasyon testleri varsayılan olarak SQLite dosyası kullanır; `TEST_SQLSERVER_CONNECTION` verilirse gerçek SQL Server'a bağlanır, CI'daki `sqlserver` işi eş zamanlılık testlerini böyle koşar: `ARCHITECTURE.md` §3). Şu an: 25 domain + 56 entegrasyon + 35 arayüz testi.
+Testler Docker gerektirmez (entegrasyon testleri varsayılan olarak SQLite dosyası kullanır; `TEST_SQLSERVER_CONNECTION` verilirse gerçek SQL Server'a bağlanır, CI'daki `sqlserver` işi eş zamanlılık testlerini böyle koşar: `ARCHITECTURE.md` §3). Şu an: 31 domain + 68 entegrasyon + 40 arayüz testi.
 Gerçek SQL Server'a karşı eş zamanlılık ölçümü ayrıca [`scripts/concurrency_load_test.py`](scripts/concurrency_load_test.py) ile yapılır (sonuçlar yukarıda).

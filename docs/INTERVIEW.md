@@ -41,7 +41,7 @@ serbest kalamaz. `Confirm_racing_with_sweep_cannot_both_win` testi bunu determin
 ## Tasarım
 
 **8. İş kuralları neden entity içinde?**
-Kural tek yerde, veritabanı/HTTP olmadan birim test edilebilir (25 domain testi milisaniyeler içinde koşar). Controller
+Kural tek yerde, veritabanı/HTTP olmadan birim test edilebilir (31 domain testi milisaniyeler içinde koşar). Controller
 sadece kimliği alıp servisi çağırır. `Seat.Status` `private set`: dışarıdan kural atlanarak değiştirilemez. (§1–2)
 
 **9. Süresi dolan tutma neden hemen "boş" sayılıyor, arka plan servisi ne işe yarıyor?**
@@ -89,6 +89,21 @@ Yalnızca `Jwt__Key` ortam değişkeninde. Eksik ya da 32 karakterden kısa ise 
 403. Sahiplik kontrolü `Reservation.Confirm` içinde ve süre/durum kontrollerinden önce: yabancıya rezervasyonun
 durumu hakkında bilgi sızmaz.
 
+**23. Kullanıcı tutmasından vazgeçebiliyor mu? Satın aldığını da iptal edebilir mi?**
+Tutmasından vazgeçebilir: `POST /api/reservations/{id}/cancel`; koltuk süre dolmasını beklemeden hemen boşalır. Satın alınmış
+(onaylanmış) rezervasyon iptal edilemez, 409: iade/ödeme akışı kapsam dışı olduğu için "Satıldı" son durum. Kural
+`Reservation.Cancel` içinde (sahiplik → onaylanmış mı → zaten iptal mi → süre dolmuş mu), controller yalnızca çağırır. (ARCHITECTURE §3)
+
+**24. Neden `DELETE` değil de `POST .../cancel`?**
+Kayıt silinmiyor, `Cancelled` durumuna geçiyor ve "Rezervasyonlarım"da geçmiş olarak kalıyor: istek bir durum geçişi. `confirm`
+ile aynı kalıp. `DELETE` idempotent beklenir, oysa ikinci iptal bilerek 409 (son durum). Tartışmaya açık bir tercih; gerekçeli.
+
+**25. İptal ile süre dolumu servisi aynı anda koltuğa dokunursa?**
+İkisi de `Seat` satırını günceller; `RowVersion` biri geçirir, diğeri `ConcurrencyConflictException` (409) alır. Süre
+dolumu kazanırsa kayıt `Expired` kalır, iptal onu `Cancelled`'a ezemez. Dürüst not: iptal ↔ tarama testi gerçek paralel değil,
+deterministik sıralı: aynı saatte ikisi birden geçerli olamaz, çakışma ancak saat okuma ile yazma arasında ilerlerse olur; o
+aralığı elle kurdum. Gerçek paralel olanlar: çift iptal ve iptal ↔ onay.
+
 ## Operasyon ve test
 
 **19. Zamanla ilgili testleri nasıl yazdın (10 dakika beklemeden)?**
@@ -97,7 +112,7 @@ sonradan üretilen JWT'nin `nbf` değeri gerçek saatin ilerisinde kalıp 401 ve
 sınıfları test başına izole factory kullanır. Bu, bir yan etki olarak öğrendiğim bir tuzak.)
 
 **20. Test piramidi nasıl?**
-25 saf domain birim testi (hızlı, kural odaklı) + 53 entegrasyon testi (gerçek HTTP hattı, JWT, EF, SQLite): auth,
+31 saf domain birim testi (hızlı, kural odaklı) + 68 entegrasyon testi (gerçek HTTP hattı, JWT, EF, SQLite): auth,
 etkinlik, hold, onay, süre dolumu (servis + worker), paralel istek, Swagger, CORS ve demo modu. Arayüzde 35 bileşen/akış
 testi (Vitest + Testing Library; sahte sunucuyla giriş→tut→onayla akışı dahil).
 
@@ -162,4 +177,4 @@ SQL Server + tarayıcıyla iki bağlamlı elle doğrulama yaptım ama bu otomati
 * Eş zamanlılık dışındaki testler ve yerel `dotnet test` SQLite'ta koşar; SQL Server'a karşı yalnızca eş zamanlılık alt kümesi CI'da koşar (soru 4).
 * Kullanıcı başına hold limiti yok.
 * Arayüz için otomatik E2E testi yok (yalnızca elle doğrulandı); demo hız sınırı genel (istemci başına değil).
-* Kullanıcı tutmasından vazgeçemez (iptal ucu yok); koltuk süre dolunca boşalır.
+* Onaylanmış (satın alınmış) rezervasyon iptal/iade edilemez; ödeme akışı kapsam dışı (soru 23).
