@@ -3,18 +3,32 @@ services:
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?.env dosyasında MSSQL_SA_PASSWORD tanımlı olmalı (cp .env.example .env)}
     ports:
       - "1433:1433"
     volumes:
       - sqldata:/var/opt/mssql
+    # API, SQL Server sorgu kabul edene kadar başlamasın: migration'ın bağlanamayıp düşmesini önler.
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q \"SELECT 1\" -b -o /dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
 
   api:
     build: .
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
       ConnectionStrings__Default: "Server=db;Database=SeatReservation;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
+      # Açılışta migration'ları otomatik uygular.
+      Database__MigrateOnStartup: "true"
+      Jwt__Key: ${JWT_KEY:?.env dosyasında JWT_KEY tanımlı olmalı (en az 32 karakter)}
+      # İlk Admin kullanıcı; ikisi de boşsa oluşturulmaz.
+      Admin__Email: ${ADMIN_EMAIL:-}
+      Admin__Password: ${ADMIN_PASSWORD:-}
     ports:
       - "8080:8080"
 

@@ -3,17 +3,17 @@
 Temel soru: **iki kişi aynı koltuğu aynı anda almaya çalışırsa ne olur?** Her aşama kendi başına çalışır durumda bitmeli.
 
 ## Aşama 1 — Backend çekirdeği (en değerli kısım)
-- [ ] Domain: `Event`, `Seat`, `Reservation` entity'leri; koltuk durumu (Boş / Tutuldu / Satıldı) ve geçiş kuralları domain içinde
-- [ ] EF Core + SQL Server, migration'lar, `Seat` üzerinde `RowVersion`
-- [ ] Koltuk tutma (hold): 10 dakika süreli, aynı koltuğa ikinci istek reddedilir
-- [ ] Satın alma/onaylama: yalnızca hold sahibi onaylayabilir
-- [ ] Hold süresi dolunca otomatik serbest bırakan arka plan servisi (`BackgroundService`)
-- [ ] JWT ile kayıt/giriş, rol (Admin / Kullanıcı)
-- [ ] Testler: domain birim testleri + **eş zamanlılık testi** (örn. 100 paralel istek, tek koltuk, tam 1 başarılı)
-- [ ] Docker: `docker compose up` ile API + SQL Server çalışır, migration otomatik uygulanır
-- [ ] CI: build + test yeşil
-- [ ] Swagger arayüzü
-- [ ] `docs/ARCHITECTURE.md` ve `docs/INTERVIEW.md` ilk sürüm
+- [x] Domain: `Event`, `Seat`, `Reservation` entity'leri; koltuk durumu (Boş / Tutuldu / Satıldı) ve geçiş kuralları domain içinde
+- [x] EF Core + SQL Server, migration'lar, `Seat` üzerinde `RowVersion`
+- [x] Koltuk tutma (hold): 10 dakika süreli, aynı koltuğa ikinci istek reddedilir
+- [x] Satın alma/onaylama: yalnızca hold sahibi onaylayabilir
+- [x] Hold süresi dolunca otomatik serbest bırakan arka plan servisi (`BackgroundService`)
+- [x] JWT ile kayıt/giriş, rol (Admin / Kullanıcı)
+- [x] Testler: domain birim testleri + **eş zamanlılık testi** (örn. 100 paralel istek, tek koltuk, tam 1 başarılı)
+- [x] Docker: `docker compose up` ile API + SQL Server çalışır, migration otomatik uygulanır — _gerçek SQL Server konteynerinde doğrulandı (2026-10-09): `/health` 200, aynı koltuğa 100 paralel hold isteğinde 1 adet 201 + 99 adet 409_
+- [x] CI: build + test yeşil — _`.github/workflows/ci.yml` ile aynı komutlar yerelde yeşil; GitHub'da henüz koşmadı_
+- [x] Swagger arayüzü
+- [x] `docs/ARCHITECTURE.md` ve `docs/INTERVIEW.md` ilk sürüm
 
 ## Aşama 2 — Arayüz ve canlı demo
 - [ ] React + Vite + Tailwind, `web/` klasöründe
